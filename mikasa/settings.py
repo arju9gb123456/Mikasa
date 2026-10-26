@@ -43,7 +43,7 @@ TTS_VOICE = "hi-IN-SwaraNeural"   # female Hindi voice. Male: "hi-IN-MadhurNeura
 TTS_RATE = "+8%"
 
 # ── Brain (OpenJarvis AI) ─────────────────────────────────────────────────
-BRAIN_MODEL = None         # None = ~/.openjarvis/config.toml wala model. Jaise "qwen3:8b"
+BRAIN_MODEL = "qwen3:8b"   # Ollama model ka naam (ollama list se dekho). None = OpenJarvis config wala
 BRAIN_AGENT = "orchestrator"
 BRAIN_TOOLS = ["web_search", "calculator", "think", "get_weather"]
 BRAIN_MAX_SPOKEN_CHARS = 450

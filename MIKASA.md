@@ -77,7 +77,7 @@ ollama pull qwen3:8b        # 16GB+ RAM ke liye achha. GPU ho to aur fast
 # kam RAM ho to:  ollama pull qwen3:4b
 ```
 
-3. `mikasa/settings.py` mein `BRAIN_MODEL = "qwen3:8b"` likh do (ya `jarvis init` se default set karo).
+3. `mikasa/settings.py` mein `BRAIN_MODEL = "qwen3:8b"` pehle se set hai. Dusra model liya ho to wahan uska naam likh do.
 
 > Ollama ke bina bhi Mikasa chalegi: apps kholna, search, notes, tasks, time sab kaam karega. Sirf general sawaalon ke jawab nahi aayenge.
 
