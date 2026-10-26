@@ -1,5 +1,7 @@
 # OpenJarvis Setup Guide (Hinglish)
 
+> **Mikasa voice assistant** (bas "Mikasa" bolo, laptop kaam karega) ka setup [`MIKASA.md`](MIKASA.md) mein hai.
+
 Ye repo **OpenJarvis** ka source code hai. OpenJarvis Stanford (Hazy Research + Scaling Intelligence Lab) ka open-source personal AI hai, jo tumhare laptop pe locally chalta hai. Cloud APIs optional hain.
 
 - Original repo: https://github.com/open-jarvis/OpenJarvis
