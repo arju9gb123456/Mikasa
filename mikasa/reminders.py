@@ -93,6 +93,9 @@ def parse_due(text: str, now: Optional[_dt.datetime] = None) -> Optional[_dt.dat
     if hour < 12:
         if period in ("pm", "noon") or (period == "night" and hour >= 6):
             hour += 12
+        elif period is None and 1 <= hour <= 7:
+            # "5 baje" bina subah/shaam ke -> aam taur pe shaam ke 5
+            hour += 12
     base = (now + _dt.timedelta(days=day)).replace(hour=hour, minute=minute, second=0, microsecond=0)
     if day == 0 and period is None and base <= now and hour < 12:
         # "5 baje" bola aur subah ke 5 nikal gaye -> shaam ke 5
