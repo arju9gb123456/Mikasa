@@ -59,8 +59,8 @@ Notes aur tasks yahan save hote hain: `~/Mikasa/notes.md` aur `~/Mikasa/tasks.js
 ### 1. Repo aur uv
 
 ```bash
-git clone https://github.com/arju9gb123456/beanssite.git   # rename ke baad: .../Mikasa.git
-cd beanssite
+git clone https://github.com/arju9gb123456/Mikasa.git
+cd Mikasa
 ```
 
 uv install (agar nahi hai):
@@ -91,9 +91,13 @@ ollama pull qwen3:8b        # 16GB+ RAM ke liye achha. GPU ho to aur fast
 
 **Mac pe:** pehli baar Terminal ko **Microphone** permission dena (System Settings → Privacy & Security → Microphone). Volume/screenshot ke liye **Accessibility** aur **Screen Recording** bhi.
 
-### 4. Laptop on hote hi Mikasa start (optional)
+### 4. Laptop on hote hi Mikasa khud start ho
 
-- **Windows:** `Win + R` → `shell:startup` → Enter. Jo folder khule usme `start_mikasa.bat` ka **shortcut** daal do.
+- **Windows:** Mikasa folder mein **`setup_autostart.bat`** pe ek baar double-click karo. Bas. Ab har login pe Mikasa minimized window mein khud start hogi:
+  - Ollama ready hone tak intezaar karti hai (max ~1 min).
+  - Crash ho to 10 second mein khud restart hoti hai.
+  - Internet late aaye to bhi kaam karti hai (us waqt offline voice).
+  - Band karna ho: **`remove_autostart.bat`**.
 - **Mac:** System Settings → General → Login Items → `+` → `start_mikasa.sh` choose karo.
 
 ---
@@ -153,4 +157,5 @@ mikasa/
   speaker.py    awaaz (Edge neural voice / offline pyttsx3)
   settings.py   saari settings
 start_mikasa.bat / start_mikasa.sh
+setup_autostart.bat / remove_autostart.bat   (Windows autostart on/off)
 ```

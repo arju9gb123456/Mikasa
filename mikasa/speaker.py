@@ -31,9 +31,8 @@ class Speaker:
             try:
                 self._say_edge(spoken)
                 return
-            except Exception as exc:  # internet nahi / package nahi
-                print(f"[Mikasa] Edge voice nahi chali ({type(exc).__name__}), offline voice use kar rahi hoon.")
-                self._engine = "pyttsx3"
+            except Exception as exc:  # internet nahi (jaise laptop abhi start hua) - is baar offline voice
+                print(f"[Mikasa] Edge voice nahi chali ({type(exc).__name__}), is baar offline voice use kar rahi hoon.")
         try:
             self._say_pyttsx3(spoken)
         except Exception as exc:

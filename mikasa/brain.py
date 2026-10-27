@@ -24,15 +24,19 @@ class Brain:
         self._history: deque[tuple[str, str]] = deque(maxlen=settings.HISTORY_TURNS)
 
     def _get(self):
-        if self._jarvis is None and self._error is None:
+        # Laptop start hote waqt Ollama der se ready hota hai, isliye fail hone pe
+        # agli baar phir try karte hain (permanent fail nahi maante).
+        if self._jarvis is None:
             try:
                 from openjarvis import Jarvis
 
                 kwargs = {"model": settings.BRAIN_MODEL} if settings.BRAIN_MODEL else {}
                 self._jarvis = Jarvis(**kwargs)
+                self._error = None
             except Exception as exc:
+                if self._error != str(exc):
+                    print(f"[Mikasa] OpenJarvis abhi start nahi hua (baad mein phir try karungi): {exc}")
                 self._error = str(exc)
-                print(f"[Mikasa] OpenJarvis start nahi hua: {exc}")
         return self._jarvis
 
     def _build_query(self, text: str) -> str:
@@ -71,6 +75,9 @@ class Brain:
             except Exception as exc2:
                 print(f"[Mikasa] Brain error: {exc2}")
                 if "engine" in str(exc2).lower() or "ollama" in str(exc2).lower():
+                    # Ollama baad mein chalu ho sakta hai: agli baar fresh connect karo
+                    self.close()
+                    self._jarvis = None
                     return self.OFFLINE_MSG
                 return "Sorry, abhi jawab nahi de paayi. Model check karo."
         answer = self._clean(raw or "") or "Hmm, iska jawab nahi mila."
