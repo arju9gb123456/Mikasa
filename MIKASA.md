@@ -137,7 +137,7 @@ ollama pull qwen3:8b        # 16GB+ RAM ke liye achha. GPU ho to aur fast
 Mikasa start hote hi ek window khulti hai (Edge app mode), jisme ye sab hai:
 
 - **Beech mein:** laal animated rings aur "MIKASA" core. Sunte waqt rings tez ghoomti hain, sochte waqt arc spin karti hai, bolte waqt core dhadakta hai.
-- **Neeche:** Mikasa ka avatar (apna original design), jo palak jhapkata hai aur bolte waqt munh hilata hai.
+- **Neeche:** Mikasa ka apna original avatar (caramel ponytail, amber aankhein, laal-kaali jacket). Chup rahe to **shy** (nazar neeche, gaal laal), sunte waqt sir tilt karke **dhyan se**, bolte waqt **cute** smile, aur kaam ke baad **cool wink**.
 - **Left:** CPU, RAM, Disk, Battery, network speed, uptime, aur speech/AI/voice ka status.
 - **Right:** ghadi, quick buttons (Gmail, WhatsApp, YouTube, VS Code, Notes, Tasks...) aur poori baat-cheet ka log.
 - **Neeche ka box:** bolne ki jagah type bhi kar sakte ho.
