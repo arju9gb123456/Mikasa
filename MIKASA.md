@@ -231,3 +231,39 @@ mikasa/
 start_mikasa.bat / start_mikasa.sh
 setup_autostart.bat / remove_autostart.bat   (Windows autostart on/off)
 ```
+
+---
+
+## 📱 Phone wali Mikasa (Android app)
+
+Phone ki apni Mikasa: wahi rings + avatar, "Mikasa" bolo aur phone pe kaam karwao.
+
+**Install:** phone ke browser mein ye link kholo → `Mikasa.apk` download → kholo → "Install unknown apps" allow karo → Install.
+https://github.com/arju9gb123456/Mikasa/releases/download/android-latest/Mikasa.apk
+
+Har naye update pe GitHub khud naya APK bana deta hai (wahi link). Purani app ke upar install karo, data rehta hai.
+
+**Pehli baar:**
+1. Mic aur notification permission **Allow**. Call / WhatsApp ke liye contacts permission bhi maangegi.
+2. ⚙️ Settings → **Gemini API key** daalo (free): phone browser mein `aistudio.google.com/apikey` → Create API key → copy → paste → Save. Iske bina bhi commands chalenge, sirf normal baat-cheet nahi.
+3. Behtar Hindi awaaz: Phone Settings → "Text-to-speech output" → Google → Hindi voice download. Phir Mikasa settings mein "Awaaz suno" se chuno.
+4. (Optional) Phone Settings → Apps → Default apps → **Digital assistant app** → Mikasa. Ab home button lamba dabao to seedha Mikasa sunegi.
+
+**Kya bol sakte ho (Hindi/Hinglish):**
+
+| Bolo | Kya hoga |
+|---|---|
+| "Mikasa, Instagram kholo" / koi bhi app | App khulegi |
+| "Mikasa, Rahul ko call lagao" | Call |
+| "Mikasa, WhatsApp pe Rahul ko message bhejo ki main aa raha hoon" | Rahul ka chat khul ke message likha milega, aap send dabao |
+| "Mikasa, YouTube pe Arijit ke gaane chalao" | YouTube |
+| "Mikasa, Bhopal station ka rasta dikhao" | Google Maps navigation |
+| "Mikasa, subah 6 baje ka alarm lagao" / "10 minute ka timer" | Alarm / timer |
+| "Mikasa, 5 baje yaad dila dena gym jana hai" | Theek 5 baje notification + Mikasa bolegi |
+| "Mikasa, torch jalao / band karo", "volume badhao", "battery kitni hai", "time kya hua" | Turant |
+| "Mikasa, note banao ki..." / "yaad rakhna ki..." | Note save, baat-cheet mein yaad rakhegi |
+| Kuch bhi poocho | Gemini se friendly jawab |
+
+**Limits:** "Mikasa" wake word tab sunti hai jab app screen pe khuli ho (Android background mein lagatar mic chalane nahi deta). Band screen pe reminders phir bhi aate hain. WhatsApp message Android ke rules ki wajah se aapko khud send dabana hoga.
+
+**Laptop ka Ollama phone se (optional, same WiFi):** laptop pe PowerShell mein `setx OLLAMA_HOST 0.0.0.0` → Ollama restart → `ipconfig` se laptop ka IPv4 dekho → Mikasa app settings mein AI = "Laptop ka Ollama", URL `http://<IP>:11434`. Windows Firewall poochhe to Private network allow karo.
