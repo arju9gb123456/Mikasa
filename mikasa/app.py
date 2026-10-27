@@ -11,8 +11,17 @@ import sys
 import threading
 import time
 
-from mikasa import settings
-from mikasa.commands import Commands, Reply, detect_wake, normalize
+import os
+import warnings
+
+# Faltu warnings chhupao (Windows symlink / HF token) - Mikasa pe asar nahi
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
+os.environ.setdefault("HF_HUB_VERBOSITY", "error")
+warnings.filterwarnings("ignore", module="huggingface_hub")
+
+from mikasa import settings  # noqa: E402
+from mikasa.commands import Commands, Reply, detect_wake, normalize  # noqa: E402
 
 BANNER = r"""
   __  __ _ _

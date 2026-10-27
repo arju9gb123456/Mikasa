@@ -131,12 +131,28 @@ class Transcriber:
     }
 
     def __init__(self) -> None:
-        from faster_whisper import WhisperModel
-
         device, compute = self._pick_device()
         print(f"[Mikasa] Speech model load ho raha hai ({settings.STT_MODEL}, {device})... "
               "pehli baar download hoga, thoda time lagega.")
+        self._load(device, compute)
+        if device == "cuda":
+            # Windows pe GPU libraries (cublas/cudnn) aksar missing hoti hain aur error
+            # pehli transcription pe aata hai. Abhi test karo, fail ho to CPU.
+            try:
+                self._run(np.zeros(16000, dtype=np.float32))
+            except Exception as exc:
+                self._to_cpu(exc)
+
+    def _load(self, device: str, compute: str) -> None:
+        from faster_whisper import WhisperModel
+
+        self.device = device
         self._model = WhisperModel(settings.STT_MODEL, device=device, compute_type=compute)
+
+    def _to_cpu(self, exc: Exception) -> None:
+        print(f"[Mikasa] GPU se speech nahi chali ({type(exc).__name__}: {str(exc)[:120]}). "
+              "CPU pe chala rahi hoon, ye bhi theek kaam karega.")
+        self._load("cpu", "int8")
 
     @staticmethod
     def _pick_device() -> tuple[str, str]:
@@ -152,7 +168,7 @@ class Transcriber:
                 pass
         return "cpu", "int8"
 
-    def transcribe(self, audio: np.ndarray) -> str:
+    def _run(self, audio: np.ndarray) -> list:
         segments, _info = self._model.transcribe(
             audio,
             language=settings.STT_LANGUAGE or None,
@@ -161,6 +177,17 @@ class Transcriber:
             vad_filter=True,
             condition_on_previous_text=False,
         )
+        return list(segments)  # generator - error yahin aata hai
+
+    def transcribe(self, audio: np.ndarray) -> str:
+        try:
+            segments = self._run(audio)
+        except Exception as exc:
+            if self.device != "cuda":
+                print(f"[Mikasa] Speech error: {exc}")
+                return ""
+            self._to_cpu(exc)
+            segments = self._run(audio)
         parts = [s.text for s in segments if getattr(s, "no_speech_prob", 0.0) < 0.6]
         text = " ".join(p.strip() for p in parts).strip()
         cleaned = text.strip(" .,!?।").lower()
