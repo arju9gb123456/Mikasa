@@ -15,6 +15,11 @@ if not defined UV (
   exit /b 1
 )
 
+REM ── libraries update (naye features / GPU files aaye hon to install, warna 1 second) ──
+echo [Mikasa] Libraries check kar rahi hoon (pehli baar GPU files ~1.5 GB download hongi)...
+"%UV%" sync --extra mikasa
+if errorlevel 1 echo [Mikasa] Library install mein dikkat aayi, purane setup se chala rahi hoon.
+
 REM ── Ollama (AI brain) ready hone ka intezaar, max ~60 second ──
 echo [Mikasa] Ollama ka intezaar kar rahi hoon...
 set /a TRIES=0

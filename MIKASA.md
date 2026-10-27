@@ -132,6 +132,14 @@ ollama pull qwen3:8b        # 16GB+ RAM ke liye achha. GPU ho to aur fast
 - Code `qwen3:8b` likhta hai. Chhote programs (calculator, to-do app, login page) achhe banenge. Bade projects ke liye usse thoda-thoda karke bolo.
 - "Mikasa code run karo" sirf Python aur HTML chalata hai, aur wo bhi tumhare bolne pe hi.
 
+## Accuracy, speed aur awaaz
+
+- **Smart samajh:** Whisper kuch galat sune (jaise "bs को दोपन करो"), to Mikasa AI se poochti hai ki asal mein kya bola tha ("VS Code open karo") aur wahi command chalati hai. Window mein grey `(samjha: ...)` line dikhegi.
+- **GPU:** NVIDIA GPU ho to Mikasa `large-v3-turbo` speech model GPU pe chalati hai, jo bahut accurate aur tez hai. GPU files (`nvidia-cublas`, `nvidia-cudnn`) `start_mikasa.bat` khud install karta hai (pehli baar ~1.5 GB, phir naya speech model ~1.6 GB).
+- **Tez jawab:** AI model GPU pe 60 minute garam rehta hai aur Qwen3 ka lamba sochna band hai. Pehla jawab 5-10 sec, baaki 1-3 sec.
+- **Awaaz chuno:** `start_mikasa.bat --voice-test` chalao. 5 female voices sunao, jo pasand aaye uska naam `settings.py` mein `TTS_VOICE` mein likho. Default `en-IN-NeerjaExpressiveNeural` hai (natural Indian ladki).
+- **Sabse real awaaz (ElevenLabs):** elevenlabs.io pe free account → Profile → API key. Windows mein: `setx ELEVENLABS_API_KEY "tumhari-key"` (phir PowerShell naya kholo). Voice Library se Hindi female voice ka **Voice ID** `settings.py` ke `ELEVENLABS_VOICE_ID` mein daalo. Free plan mein ~10,000 characters/month milte hain, khatam hone pe Mikasa apne aap Edge voice pe aa jaati hai.
+
 ## Test / debug
 
 ```bash
@@ -187,6 +195,7 @@ mikasa/
   speaker.py    awaaz (Edge neural voice / offline pyttsx3)
   whatsapp.py   WhatsApp Web automation (chat, type, confirm pe send)
   coder.py      bol ke code likhwana + VS Code / run
+  router.py     smart samajh: galat suna text -> sahi command (Ollama)
   settings.py   saari settings
 start_mikasa.bat / start_mikasa.sh
 setup_autostart.bat / remove_autostart.bat   (Windows autostart on/off)

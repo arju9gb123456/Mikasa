@@ -30,21 +30,40 @@ MAX_UTTERANCE_SECONDS = 15
 MIC_DEVICE = None          # None = default mic. Specific mic ke liye uska number/naam do
 
 # ── Speech-to-text (faster-whisper, laptop pe offline) ────────────────────
-STT_MODEL = "small"        # tiny / base / small / medium / large-v3 (bada = accurate, slow)
+# "auto" = GPU ho to "large-v3-turbo" (bahut accurate + tez), warna "small"
+STT_MODEL = "auto"         # auto / small / medium / large-v3-turbo / large-v3
 STT_LANGUAGE = "hi"        # "hi" Hinglish ke liye best. "en" sirf English ke liye
 STT_DEVICE = "auto"        # auto / cpu / cuda
+STT_BEAM_SIZE = 5
+# Whisper ko pehle se batao kaise words aate hain -> English app names sahi likhega
 STT_PROMPT = (
-    "Mikasa, Gmail खोलो. WhatsApp खोलो. YouTube पर गाने चलाओ. Google पर search करो. "
-    "Note बनाओ. Task add करो. Mikasa, आज के tasks बताओ."
+    "Mikasa, VS Code open करो. Chrome open करो. Gmail खोलो. WhatsApp पे Rahul को message भेजो. "
+    "YouTube पर Arijit Singh के गाने चलाओ. Google पर search करो. Note बनाओ. Task add करो. "
+    "Mikasa, Python का code लिखो. Mikasa, आज के tasks बताओ."
 )
+STT_HOTWORDS = ("Mikasa VS Code Chrome Gmail WhatsApp YouTube Google Notepad Calculator Instagram "
+                "LinkedIn GitHub Spotify ChatGPT Claude Python HTML code open message")
 
 # ── Text-to-speech ────────────────────────────────────────────────────────
-TTS_ENGINE = "edge"        # "edge" (natural voice, internet chahiye) / "pyttsx3" (offline)
-TTS_VOICE = "hi-IN-SwaraNeural"   # female Hindi voice. Male: "hi-IN-MadhurNeural"
-TTS_RATE = "+8%"
+# "auto" = ELEVENLABS_API_KEY set ho to ElevenLabs (sabse real insaan jaisi), warna Edge
+TTS_ENGINE = "auto"        # auto / elevenlabs / edge / pyttsx3 (offline)
+# Edge voices (free). Kaunsi pasand hai sunne ke liye: start_mikasa.bat --voice-test
+#   en-IN-NeerjaExpressiveNeural  - natural, expressive Indian ladki (Hinglish ke liye best)
+#   en-IN-NeerjaNeural            - same, thodi calm
+#   hi-IN-SwaraNeural             - Hindi ladki
+TTS_VOICE = "en-IN-NeerjaExpressiveNeural"
+TTS_FALLBACK_VOICES = ["en-IN-NeerjaNeural", "hi-IN-SwaraNeural"]
+TTS_RATE = "+0%"
+# ElevenLabs: elevenlabs.io pe free account -> API key -> Windows env variable ELEVENLABS_API_KEY.
+# Voice Library se koi Hindi/Indian female voice choose karo aur uska Voice ID yahan daalo.
+ELEVENLABS_VOICE_ID = ""
+ELEVENLABS_MODEL = "eleven_flash_v2_5"   # tez. Aur natural: "eleven_multilingual_v2"
 
-# ── Brain (OpenJarvis AI) ─────────────────────────────────────────────────
-BRAIN_MODEL = "qwen3:8b"   # Ollama model ka naam (ollama list se dekho). None = OpenJarvis config wala
+# ── Brain (Ollama AI) ─────────────────────────────────────────────────────
+BRAIN_MODEL = "qwen3:8b"   # Ollama model ka naam (ollama list se dekho)
+OLLAMA_URL = "http://127.0.0.1:11434"
+OLLAMA_KEEP_ALIVE = "60m"  # model itni der GPU/RAM mein garam rahe -> jawab tez
+SMART_ROUTER = True        # galat suna ho to bhi AI se matlab samajh ke command chalao
 BRAIN_AGENT = "orchestrator"
 BRAIN_TOOLS = ["web_search", "calculator", "think", "get_weather"]
 BRAIN_MAX_SPOKEN_CHARS = 450

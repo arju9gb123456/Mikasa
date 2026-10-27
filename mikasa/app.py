@@ -42,7 +42,10 @@ class Mikasa:
 
         self.text_mode = text_mode
         self.mute = mute
+        from mikasa.router import Router
+
         self.brain = Brain()
+        self.router = Router()
         self.commands = Commands(brain=self.brain)
         self.speaker = None
         self.listener = None
@@ -60,7 +63,8 @@ class Mikasa:
             self.transcriber = Transcriber()
             self.listener = Listener()
             self.listener.start()
-        # AI brain background mein load karo taaki pehla sawaal fast ho
+        # AI model background mein GPU/RAM mein load karo taaki pehla jawab tez aaye
+        threading.Thread(target=self.router.warmup, daemon=True).start()
         threading.Thread(target=self.brain._get, daemon=True).start()
 
     def say(self, text: str) -> None:
@@ -84,11 +88,20 @@ class Mikasa:
         return f"{title}, {text}"
 
     def respond(self, command: str) -> Reply:
+        # 1. seedhe commands (turant, AI ke bina)
         reply = self.commands.handle(command)
-        if reply is None:
-            print("\033[2m(soch rahi hoon...)\033[0m")
-            reply = Reply(self.brain.answer(command))
-        return reply
+        if reply is not None:
+            return reply
+        # 2. smart router: galat suna ho to bhi matlab samjho (ek tez AI call)
+        print("\033[2m(samajh rahi hoon...)\033[0m")
+        if settings.SMART_ROUTER:
+            intent = self.router.route(command)
+            if intent is not None:
+                reply = self.commands.execute_intent(intent, brain=self.brain)
+                if reply is not None:
+                    return reply
+        # 3. aakhri raasta: OpenJarvis agent
+        return Reply(self.brain.answer(command))
 
     def deliver(self, reply: Reply) -> Reply:
         """Reply bolo; agar uske baad koi kaam (then) hai to wo karo aur uska jawab bhi bolo."""
@@ -165,7 +178,14 @@ def main() -> None:
     parser.add_argument("--text", action="store_true", help="mic ke bina, type karke chalao")
     parser.add_argument("--mute", action="store_true", help="awaaz mat nikalo, sirf print karo")
     parser.add_argument("--list-mics", action="store_true", help="saare mic devices dikhao")
+    parser.add_argument("--voice-test", action="store_true", help="saari female voices sunao")
     args = parser.parse_args()
+
+    if args.voice_test:
+        from mikasa.speaker import voice_test
+
+        voice_test()
+        return
 
     if args.list_mics:
         import sounddevice as sd

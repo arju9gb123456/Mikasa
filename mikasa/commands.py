@@ -505,7 +505,7 @@ class Commands:
         self._wa_retry = 0
         return Reply(f"{self._wa_contact} ko ye message type kar diya: {message}. Bhej dun? Haan ya na boliye.")
 
-    def _wa_pending(self, text: str, tokens: list[str]) -> Reply:
+    def _wa_pending(self, text: str, tokens: list[str]) -> Optional[Reply]:
         kind = self.pending
         if kind == "wa_contact":
             self.pending = None
@@ -526,6 +526,11 @@ class Commands:
                 print(f"[Mikasa] WhatsApp send error: {exc}")
                 return Reply("Message bhej nahi paayi. Browser check kariye.")
             return Reply(f"Message bhej diya {self._wa_contact} ko.")
+        if len(tokens) > 3:
+            # haan/na nahi, koi nayi baat - message bina bheje chat mein rehne do
+            self.pending = None
+            print("[Mikasa] WhatsApp message nahi bheja (nayi command aayi).")
+            return None
         self._wa_retry += 1
         if self._wa_retry >= 2:
             self.pending = None
@@ -541,7 +546,10 @@ class Commands:
 
         # 0. WhatsApp ka pending sawaal (haan/na, kisko, kya message)
         if self.pending and self.pending.startswith("wa_"):
-            return self._wa_pending(text, tokens)
+            r = self._wa_pending(text, tokens)
+            if r is not None:
+                return r
+            # None = nayi command aayi, pending chhod ke aage normal handle karo
 
         # 0.1 pehchaan
         about_me = has_stem(tokens, _n(["banaya", "बनाया", "bana", "बना", "made", "creat", "built", "tumh", "तुम्ह",
@@ -706,4 +714,95 @@ class Commands:
         if asking and has_stem(tokens, _n(["date", "डेट", "tarikh", "tareekh", "तारीख", "din", "दिन", "day"])):
             return Reply(f"Aaj {_HINDI_DAYS[now.weekday()]}, {now.day} {_MONTHS[now.month - 1]} {now.year} hai.")
 
+        return None
+
+    # ── smart router ka faisla -> asli kaam ──────────────────────────────
+    def execute_intent(self, d: dict, brain=None) -> Optional[Reply]:
+        """Router (LLM) ne jo samjha uske hisaab se kaam karo. None = brain ko do."""
+        intent = str(d.get("intent", "")).strip().lower()
+        g = lambda k: str(d.get(k) or "").strip()  # noqa: E731
+        app = g("app").lower().replace(" ", "")
+        aliases = {"vs_code": "vscode", "visualstudiocode": "vscode", "code": "vscode", "web_whatsapp": "whatsapp",
+                   "fileexplorer": "files", "explorer": "files", "googledrive": "drive", "googlemaps": "maps"}
+        app = aliases.get(app, app)
+        now = _dt.datetime.now()
+
+        if intent == "open_app" and app in settings.APPS:
+            if app == "whatsapp" and settings.WHATSAPP_MODE == "web":
+                return self.whatsapp_flow("", "", False)
+            ok = open_app(app)
+            return Reply(f"{label(app)} khol rahi hoon." if ok else f"{label(app)} nahi khul paya.")
+        if intent == "close_app" and app in settings.APPS:
+            ok = close_app(app)
+            return Reply(f"{label(app)} band kar diya." if ok else f"{label(app)} band nahi ho paya.")
+        if intent in ("search", "play"):
+            query = g("query")
+            platform = "youtube" if intent == "play" else (app if app in SEARCH_URLS else "google")
+            if not query:
+                open_app(platform) if platform in settings.APPS else None
+                return Reply(f"{label(platform)} khol rahi hoon.")
+            open_url(SEARCH_URLS[platform].format(q=urllib.parse.quote_plus(query)))
+            if intent == "play":
+                return Reply(f"YouTube pe {query} laga rahi hoon.")
+            return Reply(f"{label(platform)} pe {query} search kar rahi hoon.")
+        if intent == "note_add":
+            if not g("text"):
+                self.pending = "note"
+                return Reply("Haan, kya likhun?")
+            add_note(g("text"))
+            return Reply(f"Note save kar diya: {g('text')}")
+        if intent == "note_list":
+            notes = recent_notes(3)
+            return Reply("Aapke last notes: " + ". ".join(notes) if notes else "Abhi koi note nahi hai.")
+        if intent == "task_add":
+            if not g("text"):
+                self.pending = "task"
+                return Reply("Kaunsa task add karun?")
+            add_task(g("text"))
+            return Reply(f"Task add kar diya: {g('text')}")
+        if intent == "task_list":
+            pending = [x for x in load_tasks() if not x.get("done")]
+            if not pending:
+                return Reply("Koi pending task nahi hai. Sab clear!")
+            items = ". ".join(f"{i + 1}, {x['task']}" for i, x in enumerate(pending[:7]))
+            return Reply(f"Aapke {len(pending)} pending tasks hain. {items}")
+        if intent == "task_done":
+            tasks = load_tasks()
+            pending = [x for x in tasks if not x.get("done")]
+            if not pending:
+                return Reply("Koi pending task nahi hai.")
+            q = normalize(g("text"))
+            best = max(pending, key=lambda x: difflib.SequenceMatcher(None, normalize(x["task"]), q).ratio())
+            best["done"] = True
+            save_tasks(tasks)
+            return Reply(f"Done mark kar diya: {best['task']}")
+        if intent == "whatsapp":
+            return self.whatsapp_flow(g("contact"), g("message"), True)
+        if intent == "code_write":
+            task = g("text") or g("query")
+            if not task:
+                return Reply("Kaunsa code likhun?")
+            return Reply("Theek hai, code likh rahi hoon. Thoda time lagega.",
+                         then=lambda: Reply(self.coder().write(task)))
+        if intent == "code_run":
+            return Reply("Code chala rahi hoon.", then=lambda: Reply(self.coder().run_last()))
+        if intent == "time":
+            return Reply(f"Abhi {now:%I:%M %p} ho rahe hain.".replace(" 0", " ", 1))
+        if intent == "date":
+            return Reply(f"Aaj {_HINDI_DAYS[now.weekday()]}, {now.day} {_MONTHS[now.month - 1]} {now.year} hai.")
+        if intent in ("volume_up", "volume_down", "mute"):
+            ok = change_volume({"volume_up": "up", "volume_down": "down", "mute": "mute"}[intent])
+            return Reply("Ho gaya." if ok else "Volume change nahi ho paya.")
+        if intent == "screenshot":
+            path = take_screenshot()
+            return Reply("Screenshot le liya, Mikasa folder mein save hai." if path else "Screenshot nahi le paayi.")
+        if intent == "web":
+            query = g("query")
+            if brain is not None and query:
+                return Reply("Ek second, dekh rahi hoon.", then=lambda: Reply(brain.answer(query)))
+            if query:
+                open_url(SEARCH_URLS["google"].format(q=urllib.parse.quote_plus(query)))
+                return Reply(f"Google pe {query} dikha rahi hoon.")
+        if intent in ("chat", "unclear") and g("reply"):
+            return Reply(g("reply"))
         return None
