@@ -68,8 +68,11 @@ class Listener:
     def _rms(block: np.ndarray) -> float:
         return float(np.sqrt(np.mean(block.astype(np.float32) ** 2))) if block.size else 0.0
 
-    def next_utterance(self) -> Optional[np.ndarray]:
-        """Block until someone speaks and stops. Returns float32 mono @16 kHz."""
+    def next_utterance(self, stop_check=None) -> Optional[np.ndarray]:
+        """Block until someone speaks and stops. Returns float32 mono @16 kHz.
+
+        stop_check() True ho (jaise screen se command aayi) aur koi bol nahi raha, to None.
+        """
         bps = 1.0 / settings.BLOCK_SECONDS
         preroll = collections.deque(maxlen=int(0.35 * bps))
         end_blocks = int(settings.END_SILENCE_SECONDS * bps)
@@ -84,8 +87,10 @@ class Listener:
         voiced = 0
 
         while True:
+            if not speaking and stop_check is not None and stop_check():
+                return None
             try:
-                block = self._q.get(timeout=0.5)
+                block = self._q.get(timeout=0.2)
             except queue.Empty:
                 continue
             level = self._rms(block)
@@ -182,6 +187,7 @@ class Transcriber:
         print(f"[Mikasa] Speech model load ho raha hai ({name}, {device})... "
               "naya model pehli baar download hoga, thoda time lagega.")
         self.device = device
+        self.model_name = name
         self._model = WhisperModel(name, device=device, compute_type=compute)
 
     def _to_cpu(self, exc: Exception) -> None:

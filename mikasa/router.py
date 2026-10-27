@@ -19,7 +19,7 @@ from typing import Optional
 
 import httpx
 
-from mikasa import settings
+from mikasa import persona, settings
 
 INTENTS = """
 open_app      {"app": KEY}                    app/website kholna
@@ -47,6 +47,7 @@ unclear       {"reply": "..."}                bilkul samajh na aaye - reply mein
 
 SYSTEM = """Tum Mikasa ho: {user} ki personal AI voice assistant, jo unke Windows laptop pe chalti hai. \
 Tumhe {creator} sir ne banaya hai. {user} ko hamesha "{user}" kehkar bulao.
+{personality}
 
 {user} ki awaaz ka speech-to-text NOISY hai: Hindi/Hinglish mein English app names aksar galat likhe aate hain. \
 Examples:
@@ -63,8 +64,8 @@ Intents (naam, fields, matlab):
 {intents}
 
 Sirf ek JSON object do: {{"intent": "...", ...fields}}. Koi aur text nahi.
-chat/unclear ka "reply": Hinglish (Roman script), 1-2 chhote sentences, bolne layak, koi markdown/emoji nahi, \
-"{user}" kehkar. Abhi ka time: {now}."""
+chat/unclear ka "reply": Hinglish (Roman script), upar wali personality mein, 1-3 natural sentences, bolne layak, \
+koi markdown/emoji nahi, "{user}" kehkar. Abhi ka time: {now}."""
 
 
 class Router:
@@ -79,6 +80,7 @@ class Router:
             creator=settings.CREATOR_NAME,
             apps=", ".join(settings.APPS.keys()),
             intents=INTENTS.strip(),
+            personality=persona.personality(),
             now=_dt.datetime.now().strftime("%A %d %B %Y, %I:%M %p"),
         )
 
@@ -98,7 +100,7 @@ class Router:
             "messages": messages,
             "stream": False,
             "keep_alive": settings.OLLAMA_KEEP_ALIVE,
-            "options": {"temperature": 0.2, "num_predict": max_tokens},
+            "options": {"temperature": 0.6, "num_predict": max_tokens},
         }
         if json_mode:
             p["format"] = "json"
@@ -106,13 +108,15 @@ class Router:
             p["think"] = False
         return p
 
-    def warmup(self) -> None:
+    def warmup(self) -> bool:
         """Model ko GPU/RAM mein pehle se load kar do, taaki pehla jawab tez aaye."""
         try:
             self._post(self._payload([{"role": "user", "content": "hi"}], False, 1), timeout=120)
             print("[Mikasa] AI model ready.")
+            return True
         except Exception as exc:
             print(f"[Mikasa] AI model abhi load nahi hua ({type(exc).__name__}). Ollama chalu hai?")
+            return False
 
     def route(self, heard: str) -> Optional[dict]:
         messages = [{"role": "system", "content": self._system()}]
@@ -121,7 +125,7 @@ class Router:
             messages.append({"role": "assistant", "content": a})
         messages.append({"role": "user", "content": heard})
         try:
-            data = self._post(self._payload(messages, True, 220), timeout=60)
+            data = self._post(self._payload(messages, True, 260), timeout=60)
         except Exception as exc:
             print(f"[Mikasa] Router error: {exc}")
             return None

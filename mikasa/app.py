@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import queue
 import sys
 import threading
 import time
@@ -24,7 +25,7 @@ import logging  # noqa: E402
 for _name in ("openjarvis", "huggingface_hub", "faster_whisper"):
     logging.getLogger(_name).setLevel(logging.ERROR)
 
-from mikasa import settings  # noqa: E402
+from mikasa import persona, settings  # noqa: E402
 from mikasa.commands import Commands, Reply, detect_wake, normalize  # noqa: E402
 
 BANNER = r"""
@@ -37,13 +38,12 @@ BANNER = r"""
 
 
 class Mikasa:
-    def __init__(self, text_mode: bool = False, mute: bool = False) -> None:
+    def __init__(self, text_mode: bool = False, mute: bool = False, hud: bool = True) -> None:
         from mikasa.brain import Brain
+        from mikasa.router import Router
 
         self.text_mode = text_mode
         self.mute = mute
-        from mikasa.router import Router
-
         self.brain = Brain()
         self.router = Router()
         self.commands = Commands(brain=self.brain)
@@ -51,23 +51,72 @@ class Mikasa:
         self.listener = None
         self.transcriber = None
         self.awake_until = 0.0
+        self.inbox: "queue.Queue[str]" = queue.Queue()  # screen (HUD) ya keyboard se aayi commands
+        self.hud = None
+        if hud and settings.HUD_ENABLED:
+            from mikasa.hud import Hud
+
+            h = Hud()
+            if h.start():
+                self.hud = h
+                self.inbox = h.commands
+
+    # ── HUD helpers ──
+    def _state(self, s: str) -> None:
+        if self.hud:
+            self.hud.state(s)
+
+    def _info(self, **kw) -> None:
+        if self.hud:
+            self.hud.emit("info", **kw)
+
+    def _idle_state(self) -> None:
+        self._state("listening" if time.time() < self.awake_until else "idle")
 
     def setup(self) -> None:
+        if self.hud and settings.HUD_OPEN_WINDOW:
+            self.hud.open_window()
+        self._info(mic=not self.text_mode, stt="text mode" if self.text_mode else "load ho raha hai...",
+                   ai="load ho raha hai...", voice="-" if self.mute else settings.TTS_VOICE.replace("Neural", ""))
         if not self.mute:
             from mikasa.speaker import Speaker
 
             self.speaker = Speaker()
+            self._info(voice=self.speaker.describe())
         if not self.text_mode:
             from mikasa.listener import Listener, Transcriber
 
+            self._state("thinking")
             self.transcriber = Transcriber()
+            self._info(stt=f"{self.transcriber.model_name} · {self.transcriber.device.upper()}")
             self.listener = Listener()
             self.listener.start()
+        else:
+            threading.Thread(target=self._stdin_reader, daemon=True).start()
+
+        def warm():
+            ok = self.router.warmup()
+            self._info(ai=f"{settings.BRAIN_MODEL} · {'ready' if ok else 'offline'}")
+
         # AI model background mein GPU/RAM mein load karo taaki pehla jawab tez aaye
-        threading.Thread(target=self.router.warmup, daemon=True).start()
+        threading.Thread(target=warm, daemon=True).start()
         threading.Thread(target=self.brain._get, daemon=True).start()
+        self._state("idle")
+
+    def _stdin_reader(self) -> None:
+        while True:
+            try:
+                line = input("> ").strip()
+            except EOFError:
+                self.inbox.put("\x00EOF")
+                return
+            if line:
+                self.inbox.put(line)
 
     def say(self, text: str) -> None:
+        if self.hud:
+            self.hud.emit("reply", text=text)
+        self._state("speaking")
         if self.listener:
             self.listener.pause()
         try:
@@ -78,16 +127,14 @@ class Mikasa:
         finally:
             if self.listener:
                 self.listener.resume()
+            self._idle_state()
 
     @staticmethod
     def with_title(text: str) -> str:
-        """Har jawab mein "Arjun sir" - agar pehle se nahi hai to shuru mein jodo."""
-        title = settings.USER_NAME
-        if not text or title.lower() in text.lower():
-            return text
-        return f"{title}, {text}"
+        return persona.with_title(text)
 
     def respond(self, command: str) -> Reply:
+        self._state("thinking")
         # 1. seedhe commands (turant, AI ke bina)
         reply = self.commands.handle(command)
         if reply is not None:
@@ -109,6 +156,7 @@ class Mikasa:
         steps = 0
         while reply.then is not None and steps < 5:
             steps += 1
+            self._state("thinking")
             try:
                 reply = reply.then()
             except Exception as exc:
@@ -117,51 +165,61 @@ class Mikasa:
             self.say(reply.text)
         return reply
 
-    def process(self, heard: str) -> bool:
-        """Ek suni hui line process karo. False = program band."""
+    def process(self, heard: str, force: bool = False) -> bool:
+        """Ek suni hui line process karo. force = screen/keyboard se (wake word zaruri nahi). False = band."""
         found, rest = detect_wake(heard)
         now = time.time()
-        if not found and now > self.awake_until and self.commands.pending is None:
-            if not self.text_mode:
-                print(f"\033[2m(suna, par Mikasa nahi bola): {heard}\033[0m")
+        if not force and not found and now > self.awake_until and self.commands.pending is None:
+            print(f"\033[2m(suna, par Mikasa nahi bola): {heard}\033[0m")
             return True
 
         print(f"\033[96m{settings.USER_NAME}:\033[0m {heard}")
+        if self.hud:
+            self.hud.emit("heard", text=heard)
         command = rest if found else normalize(heard)
         if not command.strip():
-            self.say(f"Haan {settings.USER_NAME}, boliye?")
             self.awake_until = time.time() + settings.FOLLOWUP_SECONDS
+            self.say(persona.wake())
             return True
 
         reply = self.deliver(self.respond(command))
         if reply.quit:
             return False
         self.awake_until = 0.0 if reply.sleep else time.time() + settings.FOLLOWUP_SECONDS
+        self._idle_state()
         return True
 
     def run(self) -> None:
         print(BANNER)
         self.setup()
-        hint = "type karo (jaise: Mikasa gmail kholo)" if self.text_mode else 'bas "Mikasa" bolo'
-        print(f"[Mikasa] Ready! {hint}. Band karne ke liye: \"Mikasa band ho jao\" ya Ctrl+C\n")
-        self.say(f"Namaste {settings.USER_NAME}, main Mikasa hoon. Jab bhi zarurat ho, bas Mikasa boliye.")
+        hint = "type karo (jaise: gmail kholo)" if self.text_mode else 'bas "Mikasa" bolo'
+        print(f"[Mikasa] Ready! {hint}. Band karne ke liye: \"Mikasa band ho jao\" ya Ctrl+C")
+        if self.hud:
+            print(f"[Mikasa] Screen: {self.hud.url}")
+        print()
+        self.say(persona.greeting())
         try:
             while True:
-                if self.text_mode:
-                    try:
-                        heard = input("> ").strip()
-                    except EOFError:
+                # screen / keyboard ki command pehle
+                try:
+                    typed = self.inbox.get_nowait()
+                except queue.Empty:
+                    typed = None
+                if typed is not None:
+                    if typed == "\x00EOF":
                         break
-                    if not heard:
-                        continue
-                    # text mode mein wake word zaruri nahi
-                    if not detect_wake(heard)[0]:
-                        self.awake_until = time.time() + 3600
-                else:
-                    audio = self.listener.next_utterance()
-                    heard = self.transcriber.transcribe(audio)
-                    if not heard:
-                        continue
+                    if not self.process(typed, force=True):
+                        break
+                    continue
+                if self.text_mode:
+                    time.sleep(0.05)
+                    continue
+                audio = self.listener.next_utterance(stop_check=lambda: not self.inbox.empty())
+                if audio is None:
+                    continue
+                heard = self.transcriber.transcribe(audio)
+                if not heard:
+                    continue
                 if not self.process(heard):
                     break
         except KeyboardInterrupt:
@@ -171,6 +229,10 @@ class Mikasa:
                 self.listener.stop()
             self.commands.close()
             self.brain.close()
+            if self.hud:
+                self.hud.state("sleeping")
+                time.sleep(0.2)
+                self.hud.stop()
 
 
 def main() -> None:
@@ -179,6 +241,7 @@ def main() -> None:
     parser.add_argument("--mute", action="store_true", help="awaaz mat nikalo, sirf print karo")
     parser.add_argument("--list-mics", action="store_true", help="saare mic devices dikhao")
     parser.add_argument("--voice-test", action="store_true", help="saari female voices sunao")
+    parser.add_argument("--no-hud", action="store_true", help="screen (HUD) mat kholo, sirf terminal")
     args = parser.parse_args()
 
     if args.voice_test:
@@ -199,7 +262,7 @@ def main() -> None:
         except Exception:
             pass
 
-    Mikasa(text_mode=args.text, mute=args.mute).run()
+    Mikasa(text_mode=args.text, mute=args.mute, hud=not args.no_hud).run()
 
 
 if __name__ == "__main__":

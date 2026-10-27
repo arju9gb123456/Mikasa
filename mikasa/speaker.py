@@ -39,11 +39,11 @@ def _play_mp3(mp3: bytes) -> None:
     sd.wait()
 
 
-def edge_mp3(text: str, voice: str, rate: str) -> bytes:
+def edge_mp3(text: str, voice: str, rate: str, pitch: str = "+0Hz") -> bytes:
     import edge_tts
 
     async def fetch() -> bytes:
-        com = edge_tts.Communicate(text, voice, rate=rate)
+        com = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
         buf = bytearray()
         async for chunk in com.stream():
             if chunk.get("type") == "audio":
@@ -85,6 +85,13 @@ class Speaker:
         self._pyttsx = None
         self._warned: set[str] = set()
 
+    def describe(self) -> str:
+        if self._engine == "elevenlabs":
+            return "ElevenLabs"
+        if self._engine == "edge":
+            return self._voices[0].replace("Neural", "").replace("en-IN-", "").replace("hi-IN-", "")
+        return "offline"
+
     def _warn(self, key: str, msg: str) -> None:
         if key not in self._warned:
             self._warned.add(key)
@@ -104,7 +111,7 @@ class Speaker:
         if self._engine in ("elevenlabs", "edge"):
             for voice in list(self._voices):
                 try:
-                    _play_mp3(edge_mp3(spoken, voice, settings.TTS_RATE))
+                    _play_mp3(edge_mp3(spoken, voice, settings.TTS_RATE, settings.TTS_PITCH))
                     return
                 except Exception as exc:
                     # voice hi galat ho (NoAudioReceived) to agli voice; internet na ho to seedha offline
@@ -149,7 +156,7 @@ def voice_test() -> None:
     for i, voice in enumerate(VOICE_TEST, 1):
         print(f"  {i}. {voice}")
         try:
-            _play_mp3(edge_mp3(VOICE_TEST_LINE, voice, "+0%"))
+            _play_mp3(edge_mp3(VOICE_TEST_LINE, voice, settings.TTS_RATE, settings.TTS_PITCH))
         except Exception as exc:
             print(f"     (nahi chali: {type(exc).__name__})")
     if os.environ.get("ELEVENLABS_API_KEY"):

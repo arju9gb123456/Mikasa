@@ -53,7 +53,8 @@ TTS_ENGINE = "auto"        # auto / elevenlabs / edge / pyttsx3 (offline)
 #   hi-IN-SwaraNeural             - Hindi ladki
 TTS_VOICE = "en-IN-NeerjaExpressiveNeural"
 TTS_FALLBACK_VOICES = ["en-IN-NeerjaNeural", "hi-IN-SwaraNeural"]
-TTS_RATE = "+0%"
+TTS_RATE = "+4%"
+TTS_PITCH = "+3Hz"         # thodi meethi/ladki jaisi. Zyada patli chahiye to "+8Hz"
 # ElevenLabs: elevenlabs.io pe free account -> API key -> Windows env variable ELEVENLABS_API_KEY.
 # Voice Library se koi Hindi/Indian female voice choose karo aur uska Voice ID yahan daalo.
 ELEVENLABS_VOICE_ID = ""
@@ -68,6 +69,11 @@ BRAIN_AGENT = "orchestrator"
 BRAIN_TOOLS = ["web_search", "calculator", "think", "get_weather"]
 BRAIN_MAX_SPOKEN_CHARS = 450
 HISTORY_TURNS = 6          # pichhli kitni baatein yaad rakhe
+
+# ── Screen (HUD) ──────────────────────────────────────────────────────────
+HUD_ENABLED = True         # laal rings + avatar + stats wali screen
+HUD_OPEN_WINDOW = True     # start pe window khud khule (Edge app mode)
+HUD_PORT = 7878
 
 # ── WhatsApp ──────────────────────────────────────────────────────────────
 WHATSAPP_MODE = "web"        # "web" = browser mein WhatsApp Web (chat/message kar sakti hai), "app" = desktop app

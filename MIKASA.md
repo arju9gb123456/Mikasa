@@ -132,6 +132,20 @@ ollama pull qwen3:8b        # 16GB+ RAM ke liye achha. GPU ho to aur fast
 - Code `qwen3:8b` likhta hai. Chhote programs (calculator, to-do app, login page) achhe banenge. Bade projects ke liye usse thoda-thoda karke bolo.
 - "Mikasa code run karo" sirf Python aur HTML chalata hai, aur wo bhi tumhare bolne pe hi.
 
+## Mikasa ki screen (HUD)
+
+Mikasa start hote hi ek window khulti hai (Edge app mode), jisme ye sab hai:
+
+- **Beech mein:** laal animated rings aur "MIKASA" core. Sunte waqt rings tez ghoomti hain, sochte waqt arc spin karti hai, bolte waqt core dhadakta hai.
+- **Neeche:** Mikasa ka avatar (apna original design), jo palak jhapkata hai aur bolte waqt munh hilata hai.
+- **Left:** CPU, RAM, Disk, Battery, network speed, uptime, aur speech/AI/voice ka status.
+- **Right:** ghadi, quick buttons (Gmail, WhatsApp, YouTube, VS Code, Notes, Tasks...) aur poori baat-cheet ka log.
+- **Neeche ka box:** bolne ki jagah type bhi kar sakte ho.
+
+Window band ho jaye to browser mein `http://127.0.0.1:7878` kholo. Screen nahi chahiye to `start_mikasa.bat --no-hud`, ya `settings.py` mein `HUD_ENABLED = False`.
+
+**Personality:** Mikasa ab pyaari, chulbuli, caring ladki ki tarah baat karti hai: emotions, masti, thoda nakhre aur teasing, aapki fikr (khana khaya?). Kisi aur AI ki tareef karoge to mazaak mein jealous bhi hogi, par kaam kabhi mana nahi karti. Andaaz badalna ho to `mikasa/persona.py` edit karo.
+
 ## Accuracy, speed aur awaaz
 
 - **Smart samajh:** Whisper kuch galat sune (jaise "bs को दोपन करो"), to Mikasa AI se poochti hai ki asal mein kya bola tha ("VS Code open karo") aur wahi command chalati hai. Window mein grey `(samjha: ...)` line dikhegi.
@@ -196,6 +210,8 @@ mikasa/
   whatsapp.py   WhatsApp Web automation (chat, type, confirm pe send)
   coder.py      bol ke code likhwana + VS Code / run
   router.py     smart samajh: galat suna text -> sahi command (Ollama)
+  persona.py    personality, greetings, andaaz
+  hud/          screen: server.py (live status/stats) + index.html (rings, avatar, chat)
   settings.py   saari settings
 start_mikasa.bat / start_mikasa.sh
 setup_autostart.bat / remove_autostart.bat   (Windows autostart on/off)

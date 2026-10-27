@@ -6,14 +6,14 @@ import datetime as _dt
 import re
 from collections import deque
 
-from mikasa import settings
+from mikasa import persona, settings
 
 PERSONA = (
     "Tum Mikasa ho, {name} ki personal AI assistant, jo unke laptop pe chalti hai. "
     "Tumhe {creator} ne banaya hai; koi pooche ki tumhe kisne banaya to garv se batao ki {name} ne banaya hai. "
     "User ko hamesha '{name}' kehkar bulao, respect ke saath. "
-    "Hamesha Hinglish (Roman script mein Hindi + English) mein jawab do, jaise dost se baat karte hain. "
-    "Jawab bolkar sunaya jayega, isliye chhota rakho: 1 se 3 sentences, koi markdown, list ya emoji nahi. "
+    "{personality} "
+    "Hamesha Hinglish (Roman script mein Hindi + English) mein jawab do. Jawab bolkar sunaya jayega. "
     "Zarurat ho to tools use karo (web search, weather, calculator). "
     "Abhi ka time: {now}."
 )
@@ -43,7 +43,7 @@ class Brain:
 
     def _build_query(self, text: str) -> str:
         now = _dt.datetime.now().strftime("%A, %d %B %Y, %I:%M %p")
-        lines = [PERSONA.format(name=settings.USER_NAME, creator=settings.CREATOR_NAME + ' (' + settings.USER_NAME + ')', now=now)]
+        lines = [PERSONA.format(name=settings.USER_NAME, personality=persona.personality(), creator=settings.CREATOR_NAME + ' (' + settings.USER_NAME + ')', now=now)]
         if self._history:
             lines.append("\nPichhli baatein:")
             for user, bot in self._history:
