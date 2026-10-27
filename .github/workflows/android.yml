@@ -1,0 +1,51 @@
+# Mikasa Android app: har push pe APK banta hai aur "Mikasa Android (latest)" release mein aa jaata hai.
+name: Mikasa Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Build APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk Mikasa.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mikasa-apk
+          path: Mikasa.apk
+
+      - name: Publish to release "android-latest"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: "Mikasa Android (latest)"
+          body: |
+            Phone pe ye **Mikasa.apk** download karke install karo.
+            Build #${{ github.run_number }} · commit ${{ github.sha }}
+          files: Mikasa.apk
+          make_latest: true

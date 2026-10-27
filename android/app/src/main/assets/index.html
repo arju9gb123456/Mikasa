@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Mikasa</title>
+<style>
+  :root { --bg:#07070a; --panel:rgba(20,14,18,.92); --line:rgba(255,70,70,.18); --text:#f1e9ea; --dim:#9a8e91;
+          --red:#ff3b3b; --red2:#c4161c; --pink:#ff5fa2; --green:#39e58c; --amber:#ffb547; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font:15px/1.45 system-ui, "Noto Sans Devanagari", sans-serif; overflow:hidden; }
+  .app { display:flex; flex-direction:column; height:100vh; }
+  .top { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); background:#0b080a; }
+  .top b { color:var(--red); letter-spacing:.12em; }
+  .top .sub { color:var(--dim); font-size:11px; }
+  .top button { margin-left:auto; background:none; border:1px solid var(--line); color:var(--text); border-radius:10px; padding:6px 10px; font-size:16px; }
+  .stage { position:relative; flex:0 0 auto; height:46vh; display:grid; place-items:center; overflow:hidden;
+           background:radial-gradient(circle at 50% 42%, #3a0508 0%, #1a0306 40%, #07070a 74%); }
+  .rings { position:relative; width:min(68vw, 34vh); aspect-ratio:1; margin-top:-12vh; animation:breathe 5s ease-in-out infinite; }
+  .ring,.arc { position:absolute; border-radius:50%; }
+  .r2 { inset:6%; border:2px solid rgba(255,60,60,.32); }
+  .r3 { inset:15%; border:1px dashed rgba(255,90,90,.35); animation:spin 40s linear infinite; }
+  .r4 { inset:24%; background:radial-gradient(circle,#c4161c 0%,#8c0d12 55%,#4a060a 100%); opacity:.55; }
+  .r5 { inset:33%; background:radial-gradient(circle,#ff4b4b 0%,#c4161c 65%,#7a0b10 100%); box-shadow:0 0 50px rgba(255,40,40,.55); }
+  .arc { border:3px solid transparent; }
+  .a1 { inset:1%; border-top-color:var(--red); border-right-color:rgba(255,59,59,.4); animation:spin 9s linear infinite; }
+  .a2 { inset:10%; border-bottom-color:var(--pink); border-left-color:rgba(255,95,162,.35); animation:spin 14s linear infinite reverse; }
+  .a3 { inset:19%; border-top-color:rgba(255,180,180,.6); animation:spin 6s linear infinite; }
+  .core { position:absolute; inset:40%; border-radius:50%; display:grid; place-items:center; background:radial-gradient(circle,#ff5757,#d01a20);
+          box-shadow:0 0 34px rgba(255,60,60,.8); font-weight:800; letter-spacing:.12em; font-size:12px; color:#fff; transition:transform .1s; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes breathe { 0%,100% { transform:scale(1);} 50% { transform:scale(1.035);} }
+  body.listening .a1, body.listening .a2 { animation-duration:3s; }
+  body.listening .r2 { border-color:rgba(120,255,170,.6); box-shadow:0 0 20px rgba(57,229,140,.35); }
+  body.thinking .a3 { animation-duration:1s; border-top-color:#fff; }
+  body.speaking .rings { animation-duration:1.2s; }
+  .status { position:absolute; top:12px; left:50%; transform:translateX(-50%); padding:5px 12px; border:1px solid var(--line);
+            border-radius:999px; background:rgba(0,0,0,.45); font-size:12px; white-space:nowrap; }
+  .status i { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--dim); margin-right:6px; }
+  body.listening .status i { background:var(--green); box-shadow:0 0 8px var(--green); }
+  body.thinking .status i { background:var(--amber); box-shadow:0 0 8px var(--amber); }
+  body.speaking .status i { background:var(--pink); box-shadow:0 0 8px var(--pink); }
+  .avatar { position:absolute; bottom:-4px; left:50%; transform:translateX(-50%); width:min(58vw, 28vh); }
+  .avatar svg { width:100%; height:auto; display:block; filter:drop-shadow(0 6px 16px rgba(0,0,0,.6)); }
+  .eyes { transform-origin: 50% 50%; transform-box: fill-box; animation: blink 4.6s infinite; }
+  @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+  .tail { transform-origin: 150px 70px; transform-box: view-box; animation: tailsway 3.4s ease-in-out infinite; }
+  @keyframes tailsway { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(3deg); } }
+  .head { transform-origin: 120px 180px; transform-box: view-box; transition: transform .5s ease; }
+  .pupils { transition: transform .5s ease; }
+  #blush { transition: opacity .6s ease; opacity: .45; }
+  .brow { transition: transform .4s ease; }
+  #wink { transition: opacity .15s; }
+  /* shy (idle): nazar neeche, gaal laal, sir halka sa jhuka */
+  body.idle .pupils, body.sleeping .pupils { transform: translateY(2.5px) translateX(-1px); }
+  body.idle #blush { opacity: .85; }
+  body.idle .head { transform: rotate(-2deg); }
+  /* listening: dhyan se, sir tilt, eyebrows upar */
+  body.listening .head { transform: rotate(4deg); }
+  body.listening .brow { transform: translateY(-2.5px); }
+  body.listening #blush { opacity: .5; }
+  /* thinking: upar dekhna */
+  body.thinking .pupils { transform: translate(2px, -3px); }
+  body.thinking .head { transform: rotate(-3deg); }
+  /* speaking: cute, khush */
+  body.speaking #blush { opacity: .6; }
+  body.speaking .head { animation: nod 1.4s ease-in-out infinite; }
+  @keyframes nod { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(1.8deg) translateY(1px); } }
+  /* cool: kaam ke baad wink */
+  body.wink #eyeR { opacity: 0; }
+  body.wink #wink { opacity: 1; }
+  body.wink .eyes { animation: none; }
+  .partial { position:absolute; top:44px; left:12px; right:12px; z-index:2; text-shadow:0 1px 4px #000; text-align:center; color:var(--dim); font-size:13px; min-height:18px; }
+  .log { flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
+  .msg { padding:8px 11px; border-radius:12px; max-width:86%; word-wrap:break-word; font-size:14.5px; }
+  .msg small { display:block; color:var(--dim); font-size:10.5px; margin-bottom:2px; }
+  .you { align-self:flex-end; background:rgba(255,255,255,.08); }
+  .her { align-self:flex-start; background:rgba(255,59,59,.14); border:1px solid rgba(255,59,59,.24); }
+  .rem { align-self:center; background:rgba(255,181,71,.15); border:1px solid rgba(255,181,71,.35); }
+  .bar { display:flex; gap:8px; align-items:center; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:#0b080a; }
+  .bar input { flex:1; min-width:0; height:44px; border-radius:22px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--text); padding:0 16px; font:inherit; outline:none; }
+  .mic { flex:0 0 56px; width:56px; height:56px; border-radius:50%; border:0; background:radial-gradient(circle,#ff5757,#c4161c); color:#fff; font-size:24px;
+         box-shadow:0 0 18px rgba(255,59,59,.55); }
+  body.listening .mic { background:radial-gradient(circle,#5dffa5,#1e9e5a); box-shadow:0 0 22px rgba(57,229,140,.7); }
+  .send { flex:0 0 auto; height:44px; padding:0 14px; border-radius:22px; border:0; background:#2a1a1e; color:var(--text); font:inherit; }
+  /* settings */
+  .sheet { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-end; z-index:9; }
+  .sheet.open { display:flex; }
+  .card { width:100%; max-height:88vh; overflow-y:auto; background:#120d10; border-top:1px solid var(--line); border-radius:18px 18px 0 0; padding:18px 16px 26px; }
+  .card h2 { margin:0 0 4px; font-size:17px; color:var(--red); letter-spacing:.06em; }
+  .card p { margin:4px 0 12px; color:var(--dim); font-size:12.5px; }
+  .card label { display:block; font-size:12px; color:var(--dim); margin:12px 0 4px; }
+  .card input, .card select { width:100%; height:42px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--text); padding:0 12px; font:inherit; }
+  .row { display:flex; gap:10px; align-items:center; margin-top:12px; font-size:14px; }
+  .row input { width:auto; height:auto; }
+  .btns { display:flex; gap:10px; margin-top:18px; }
+  .btns button { flex:1; height:44px; border-radius:12px; border:0; font:inherit; }
+  .primary { background:var(--red2); color:#fff; } .ghost { background:#2a1a1e; color:var(--text); }
+  .hint { font-size:12px; color:var(--dim); margin-top:6px; }
+  .hint a { color:#ff8fb1; }
+</style>
+</head>
+<body class="idle">
+<div class="app">
+  <div class="top">
+    <span><b>MIKASA</b></span><span class="sub" id="sub">made by Arjun Ahirwar</span>
+    <button id="gear" aria-label="Settings">⚙️</button>
+  </div>
+
+  <div class="stage">
+    <div class="status"><i></i><span id="stateText">Ready</span></div>
+    <div class="rings">
+      <div class="ring r2"></div><div class="ring r3"></div><div class="ring r4"></div><div class="ring r5"></div>
+      <div class="arc a1"></div><div class="arc a2"></div><div class="arc a3"></div>
+      <div class="core" id="core">MIKASA</div>
+    </div>
+    <!-- Original avatar (Mikasa ka apna design): caramel ponytail, amber aankhein, laal-kaali bomber -->
+    <div class="avatar">
+      <svg viewBox="0 0 240 260" aria-label="Mikasa avatar">
+        <defs>
+          <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#d9a066"/><stop offset=".55" stop-color="#b87838"/><stop offset="1" stop-color="#8a5226"/>
+          </linearGradient>
+          <linearGradient id="hairHi" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f6cf98" stop-opacity=".9"/><stop offset="1" stop-color="#f6cf98" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="jacket" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#26232a"/><stop offset="1" stop-color="#121015"/>
+          </linearGradient>
+          <radialGradient id="skin" cx=".5" cy=".38" r=".72"><stop offset="0" stop-color="#fff0e6"/><stop offset="1" stop-color="#f6cdb8"/></radialGradient>
+          <radialGradient id="iris" cx=".5" cy=".35" r=".7"><stop offset="0" stop-color="#ffd36b"/><stop offset=".55" stop-color="#f09a2a"/><stop offset="1" stop-color="#9b4a12"/></radialGradient>
+        </defs>
+
+        <!-- ponytail (peeche, jhoolti hai) -->
+        <g class="tail">
+          <path d="M150 58 C196 52 214 96 204 150 C198 186 210 214 222 236 C196 228 178 200 180 166 C182 128 176 96 150 84Z" fill="url(#hair)"/>
+          <path d="M168 70 C190 80 198 110 192 146" stroke="#f1c28a" stroke-width="3" fill="none" stroke-linecap="round" opacity=".55"/>
+        </g>
+
+        <!-- body: bomber jacket -->
+        <path d="M54 260 C56 216 82 196 120 196 C158 196 184 216 186 260Z" fill="url(#jacket)"/>
+        <path d="M54 260 C56 228 66 210 82 202 L90 260Z" fill="#c4161c"/>
+        <path d="M186 260 C184 228 174 210 158 202 L150 260Z" fill="#c4161c"/>
+        <path d="M96 200 C104 214 136 214 144 200 L140 196 C132 206 108 206 100 196Z" fill="#c4161c"/>
+        <path d="M104 206 L120 240 L136 206 C130 212 110 212 104 206Z" fill="#f4f1f3"/>
+        <circle cx="156" cy="232" r="9" fill="#c4161c" stroke="#ff6b6b" stroke-width="1.2"/>
+        <text x="156" y="236.5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Segoe UI, sans-serif">M</text>
+        <rect x="108" y="170" width="24" height="30" rx="10" fill="#f0c1ab"/>
+
+        <g class="head">
+          <!-- face -->
+          <ellipse cx="120" cy="124" rx="51" ry="57" fill="url(#skin)"/>
+          <!-- ears + earring -->
+          <ellipse cx="70" cy="132" rx="6" ry="10" fill="#f3c6b1"/>
+          <ellipse cx="170" cy="132" rx="6" ry="10" fill="#f3c6b1"/>
+          <circle cx="170" cy="146" r="3" fill="none" stroke="#ff4b4b" stroke-width="1.8"/>
+
+          <!-- eyes -->
+          <g class="eyes">
+            <g id="eyeL">
+              <ellipse cx="98" cy="130" rx="12" ry="14.5" fill="#fff"/>
+              <g class="pupils"><ellipse cx="98.5" cy="132" rx="9" ry="11.5" fill="url(#iris)"/>
+                <ellipse cx="98.5" cy="133" rx="4.2" ry="5.5" fill="#5a2608"/>
+                <circle cx="95" cy="126.5" r="3.6" fill="#fff"/><circle cx="102" cy="137" r="1.7" fill="#fff" opacity=".85"/></g>
+              <path d="M85 121 Q98 112 112 120" stroke="#3a2416" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+              <path d="M85 121 L81 118" stroke="#3a2416" stroke-width="2.4" stroke-linecap="round"/>
+            </g>
+            <g id="eyeR">
+              <ellipse cx="142" cy="130" rx="12" ry="14.5" fill="#fff"/>
+              <g class="pupils"><ellipse cx="141.5" cy="132" rx="9" ry="11.5" fill="url(#iris)"/>
+                <ellipse cx="141.5" cy="133" rx="4.2" ry="5.5" fill="#5a2608"/>
+                <circle cx="138" cy="126.5" r="3.6" fill="#fff"/><circle cx="145" cy="137" r="1.7" fill="#fff" opacity=".85"/></g>
+              <path d="M128 120 Q142 112 155 121" stroke="#3a2416" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+              <path d="M155 121 L159 118" stroke="#3a2416" stroke-width="2.4" stroke-linecap="round"/>
+            </g>
+          </g>
+          <!-- wink (cool) -->
+          <path id="wink" d="M131 132 Q142 124 153 132" stroke="#3a2416" stroke-width="3.2" fill="none" stroke-linecap="round" opacity="0"/>
+          <!-- eyebrows -->
+          <path class="brow" d="M88 106 Q98 101 108 105" stroke="#7a4a24" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+          <path class="brow" d="M132 105 Q142 101 152 106" stroke="#7a4a24" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+          <!-- blush (shy) -->
+          <g id="blush">
+            <ellipse cx="85" cy="150" rx="10" ry="5" fill="#ff8fa3"/>
+            <ellipse cx="155" cy="150" rx="10" ry="5" fill="#ff8fa3"/>
+            <path d="M80 148 l3 -4 M86 148 l3 -4 M150 148 l3 -4 M156 148 l3 -4" stroke="#ff6f8e" stroke-width="1.4" stroke-linecap="round"/>
+          </g>
+          <!-- nose + mouth -->
+          <path d="M119 143 q1.5 2 3 0" stroke="#d8988a" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <path id="mouth" d="M112 156 Q120 161 128 156" stroke="#b0465e" stroke-width="2.6" fill="#e86a86" stroke-linecap="round"/>
+
+          <!-- front hair: side-swept bangs -->
+          <path d="M68 116 C62 70 94 52 124 54 C156 56 178 76 174 116 C170 100 164 92 156 88 C158 98 156 106 150 110
+                   C146 96 136 84 120 80 C116 92 104 104 90 110 C94 100 94 94 92 90 C82 96 74 104 68 116Z" fill="url(#hair)"/>
+          <path d="M96 64 C112 56 134 58 146 66 C130 64 112 66 100 74Z" fill="url(#hairHi)"/>
+          <!-- side locks -->
+          <path d="M68 110 C60 138 64 164 74 182 C78 160 76 134 80 114Z" fill="#b87838"/>
+          <path d="M172 110 C178 134 176 156 168 172 C166 152 166 132 162 114Z" fill="#b87838"/>
+          <!-- hair tie + heart clip -->
+          <path d="M150 62 q8 -6 14 2 q-4 8 -14 -2Z" fill="#c4161c"/>
+          <path d="M82 84 c0 -4 6 -5 7 -1 c1 -4 7 -3 7 1 c0 4 -7 8 -7 8 c0 0 -7 -4 -7 -8Z" fill="#ff4b6e" stroke="#c4161c" stroke-width=".8"/>
+        </g>
+      </svg>
+    </div>
+    <div class="partial" id="partial"></div>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <div class="bar">
+    <input id="inp" placeholder="Type karo ya mic dabao..." autocomplete="off" enterkeyhint="send">
+    <button class="send" id="send">➤</button>
+    <button class="mic" id="mic" aria-label="Bolo">🎤</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="card">
+    <h2>Mikasa Settings</h2>
+    <p>Sab kuch phone mein hi save hota hai.</p>
+
+    <label>Aapko kya bulaye</label>
+    <input id="s_user" placeholder="Arjun sir">
+
+    <label>AI dimaag (normal baat-cheet ke liye)</label>
+    <select id="s_ai">
+      <option value="gemini">Google Gemini (free key, internet)</option>
+      <option value="ollama">Laptop ka Ollama (same WiFi)</option>
+      <option value="off">Band (sirf commands)</option>
+    </select>
+    <div id="g_box">
+      <label>Gemini API key</label>
+      <input id="s_key" placeholder="AIza..." autocomplete="off">
+      <div class="hint">Free key: phone browser mein <b>aistudio.google.com/apikey</b> kholo → Create API key → copy karke yahan paste.</div>
+      <label>Gemini model</label>
+      <input id="s_gmodel" placeholder="gemini-2.5-flash">
+    </div>
+    <div id="o_box">
+      <label>Laptop Ollama URL</label>
+      <input id="s_ourl" placeholder="http://192.168.1.10:11434">
+      <div class="hint">Laptop pe Ollama ko WiFi pe kholna padega (OLLAMA_HOST=0.0.0.0). MIKASA.md dekho.</div>
+      <label>Ollama model</label>
+      <input id="s_omodel" placeholder="qwen3:4b">
+    </div>
+
+    <div class="row"><input type="checkbox" id="s_wake"> <span>Hamesha suno — "Mikasa" bolte hi jaago (app khuli ho tab)</span></div>
+    <div class="row"><input type="checkbox" id="s_beep"> <span>Sunte waqt "beep" ki awaaz chhupao</span></div>
+
+    <label>Awaaz (Hindi voices)</label>
+    <select id="s_voice"></select>
+    <div class="row" style="gap:8px">
+      <span style="font-size:12px;color:var(--dim)">Pitch</span><input type="range" id="s_pitch" min="0.8" max="1.5" step="0.02" style="flex:1">
+    </div>
+    <div class="row" style="gap:8px">
+      <span style="font-size:12px;color:var(--dim)">Speed</span><input type="range" id="s_rate" min="0.7" max="1.5" step="0.02" style="flex:1">
+    </div>
+    <div class="hint">Behtar Hindi awaaz: Phone Settings → "Text-to-speech" → Google → Hindi voice data download karo.</div>
+
+    <div class="btns">
+      <button class="ghost" id="test">Awaaz suno</button>
+      <button class="primary" id="save">Save</button>
+    </div>
+    <div class="btns"><button class="ghost" id="close">Band karo</button></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const A = window.Android || { listen(){}, send(t){ onHeard(t); onReply('(demo) ' + t); }, getSettings(){ return '{}'; }, saveSettings(){}, voices(){ return '[]'; }, testVoice(){}, info(){ return '{}'; } };
+const STATE = { idle:'"Mikasa" boliye', listening:'Sun rahi hoon...', thinking:'Soch rahi hoon...', speaking:'Bol rahi hoon...', sleeping:'Mic dabao' };
+const MOUTHS = ['M112 156 Q120 161 128 156','M111 154 Q120 168 129 154 Q120 159 111 154','M113 153 Q120 172 127 153 Q120 157 113 153','M110 155 Q120 165 130 155 Q120 160 110 155'];
+const SMIRK = 'M112 157 Q122 160 130 153';
+let mouthTimer=null, lastState='idle', winkTimer=null, user='Arjun sir';
+
+function onState(s) {
+  const was = lastState; lastState = s;
+  document.body.className = s;
+  $('stateText').textContent = STATE[s] || s;
+  clearInterval(mouthTimer);
+  if (s === 'speaking') {
+    mouthTimer = setInterval(() => { $('mouth').setAttribute('d', MOUTHS[1 + Math.floor(Math.random()*3)]); $('core').style.transform = `scale(${1+Math.random()*.12})`; }, 110);
+  } else { $('mouth').setAttribute('d', MOUTHS[0]); $('core').style.transform = 'scale(1)'; }
+  if (s !== 'listening') $('partial').textContent = '';
+  clearTimeout(winkTimer);
+  if (was === 'speaking' && s !== 'speaking' && Math.random() < .6) {
+    document.body.classList.add('wink'); $('mouth').setAttribute('d', SMIRK);
+    winkTimer = setTimeout(() => { document.body.classList.remove('wink'); $('mouth').setAttribute('d', MOUTHS[0]); }, 1300);
+  }
+}
+function add(cls, who, text) {
+  const d = document.createElement('div'); d.className = 'msg ' + cls;
+  const s = document.createElement('small'); s.textContent = who; d.appendChild(s);
+  d.appendChild(document.createTextNode(text)); $('log').appendChild(d);
+  $('log').scrollTop = $('log').scrollHeight;
+  while ($('log').children.length > 80) $('log').firstChild.remove();
+}
+function onHeard(t) { add('you', user, t); $('partial').textContent=''; }
+function onReply(t) { add('her', 'Mikasa', t); }
+function onReminder(t) { add('rem', '⏰ Reminder', t); }
+function onPartial(t) { $('partial').textContent = t; }
+function onIgnored(t) { $('partial').textContent = '(suna: ' + t + ')'; }
+function onLevel(v) { const k = Math.max(0, Math.min(1, (v + 2) / 10)); $('core').style.transform = `scale(${1 + k*.18})`; }
+function onInfo(j) { try { const i = typeof j === 'string' ? JSON.parse(j) : j; if (i.user) user = i.user; $('sub').textContent = 'AI: ' + (i.ai || '-'); } catch(e){} }
+
+function send() { const t = $('inp').value.trim(); if (!t) return; $('inp').value=''; A.send(t); }
+$('send').onclick = send;
+$('inp').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+$('mic').onclick = () => A.listen();
+
+// settings
+function fillVoices(sel) {
+  let v = []; try { v = JSON.parse(A.voices()); } catch(e){}
+  $('s_voice').innerHTML = '<option value="">Auto (best Hindi female)</option>' + v.map(n => `<option>${n}</option>`).join('');
+  $('s_voice').value = sel || '';
+}
+function showBoxes() { $('g_box').style.display = $('s_ai').value === 'gemini' ? '' : 'none'; $('o_box').style.display = $('s_ai').value === 'ollama' ? '' : 'none'; }
+function openSettings() {
+  let s = {}; try { s = JSON.parse(A.getSettings()); } catch(e){}
+  $('s_user').value = s.userName || 'Arjun sir'; $('s_ai').value = s.aiMode || 'gemini';
+  $('s_key').value = s.geminiKey || ''; $('s_gmodel').value = s.geminiModel || 'gemini-2.5-flash';
+  $('s_ourl').value = s.ollamaUrl || ''; $('s_omodel').value = s.ollamaModel || 'qwen3:4b';
+  $('s_wake').checked = s.wakeWord !== false; $('s_beep').checked = s.muteBeep !== false;
+  $('s_pitch').value = s.pitch || 1.12; $('s_rate').value = s.rate || 1.05;
+  fillVoices(s.voice); showBoxes(); $('sheet').classList.add('open');
+}
+function collect() {
+  return JSON.stringify({ userName: $('s_user').value.trim(), aiMode: $('s_ai').value, geminiKey: $('s_key').value.trim(),
+    geminiModel: $('s_gmodel').value.trim(), ollamaUrl: $('s_ourl').value.trim(), ollamaModel: $('s_omodel').value.trim(),
+    wakeWord: $('s_wake').checked, muteBeep: $('s_beep').checked, voice: $('s_voice').value,
+    pitch: parseFloat($('s_pitch').value), rate: parseFloat($('s_rate').value) });
+}
+$('gear').onclick = openSettings;
+$('s_ai').onchange = showBoxes;
+$('close').onclick = () => $('sheet').classList.remove('open');
+$('save').onclick = () => { A.saveSettings(collect()); $('sheet').classList.remove('open'); };
+$('test').onclick = () => { A.saveSettings(collect()); A.testVoice($('s_voice').value); };
+
+onInfo(A.info());
+onState('idle');
+</script>
+</body>
+</html>
