@@ -46,7 +46,19 @@ Mic hamesha on  →  awaaz aayi?  →  Whisper (offline) text banata hai
 | "Mikasa, screenshot lo" | Screenshot `~/Mikasa/screenshots/` mein |
 | "Mikasa, so jao" / "thank you" | Wapas sirf naam pe jaagegi |
 | "Mikasa, band ho jao" | Program band |
+| "Mikasa, tumhe kisne banaya?" | "Mujhe Arjun Ahirwar sir ne banaya hai" |
+| "Mikasa, tum kaun ho?" | Apna parichay degi |
+| "Mikasa, VS Code kholo aur ek calculator ka python code likho" | AI code likhegi, file save karke VS Code mein kholegi |
+| "Mikasa, ek login page ki website bana do" | HTML page likh ke VS Code mein |
+| "Mikasa, code run karo" | Last likha code chalayegi (Python = naya terminal, HTML = browser) |
+| "Mikasa, WhatsApp kholo" / "browser mein web WhatsApp kholo" | WhatsApp Web khulega |
+| "Mikasa, Rahul ki chat kholo" | Rahul ki chat khulegi |
+| "Mikasa, WhatsApp pe Rahul ko message bhejo ki main 5 baje aaunga" | Message **type** karke poochegi "Bhej dun?" → "haan" = send, "na" = hata degi |
+| "Mikasa, Priti ko good morning bhej do" | Same, confirm karke |
+| "Mikasa, Rahul ko WhatsApp karo" → "Kya message likhun?" → "hello bhai" → "Bhej dun?" → "haan" | Step-by-step |
 | Kuch bhi aur poocho | AI jawab dega |
+
+Mikasa tumhe hamesha **"Arjun sir"** bulati hai (naam `mikasa/settings.py` mein `USER_NAME` se badal sakte ho).
 
 Hindi mein bolo ya Hinglish mein, dono chalega ("मिकासा, यूट्यूब पर गाने चलाओ").
 
@@ -102,6 +114,24 @@ ollama pull qwen3:8b        # 16GB+ RAM ke liye achha. GPU ho to aur fast
 
 ---
 
+## WhatsApp Web setup (ek baar)
+
+1. Bolo **"Mikasa, WhatsApp kholo"**. Microsoft Edge ki ek alag window mein WhatsApp Web khulega.
+2. Phone mein WhatsApp → **Linked devices** → **Link a device** → screen ka QR scan karo.
+3. Login yaad rehta hai (`~/Mikasa/whatsapp_browser` folder mein). Agli baar QR nahi maangega.
+
+- Mikasa **kabhi bina poochhe message nahi bhejti.** Pehle bolti hai kisko kya type kiya, phir tumhare "haan" pe hi Enter dabati hai.
+- Chat ka naam dhyan se suno. Galat chat khuli ho to "na" bolo.
+- Naam aur WhatsApp ka saved naam alag ho, to `settings.py` mein `CONTACTS` add karo, jaise `"honey": "Priti"`, ya seedha number `"rahul": "919876543210"`.
+- Edge nahi hai to `WHATSAPP_BROWSER = "chrome"` karo. Dono na hon to: `uv run playwright install chromium`.
+- WhatsApp apni website badalta rehta hai. Kabhi chat/message box na mile, to error mujhe bhejna, selectors update karne padenge (`mikasa/whatsapp.py` ke upar).
+
+## Code likhwana
+
+- Code `~/Mikasa/code/` folder mein save hota hai aur VS Code mein khulta hai.
+- Code `qwen3:8b` likhta hai. Chhote programs (calculator, to-do app, login page) achhe banenge. Bade projects ke liye usse thoda-thoda karke bolo.
+- "Mikasa code run karo" sirf Python aur HTML chalata hai, aur wo bhi tumhare bolne pe hi.
+
 ## Test / debug
 
 ```bash
@@ -141,7 +171,7 @@ Naya app add karne ka example (Amazon):
 
 ## Abhi kya nahi kar sakti (next version mein)
 
-- **WhatsApp pe message bhejna / mail likh ke bhejna:** abhi sirf app/website kholti hai, type karke send nahi karti. Ye UI automation se ho sakta hai, par galat insaan ko message jaane ka risk hai, isliye confirmation ke saath banana hoga.
+- **Mail likh ke bhejna:** Gmail abhi sirf khulta/search hota hai.
 - **Reminder ka alarm:** "yaad dila dena" abhi task list mein jaata hai, time pe khud nahi bolti.
 - **Gmail padh ke sunana** (kaunse mail pending hain): iske liye OpenJarvis ka `jarvis connect gdrive` + digest chahiye (`SETUP_HINGLISH.md` dekho), Mikasa mein jodna baaki hai.
 - **Shell commands:** safety ke liye Mikasa ka AI laptop pe koi bhi command khud nahi chala sakta. Sirf upar wale fixed kaam karta hai.
@@ -155,6 +185,8 @@ mikasa/
   commands.py   quick commands (apps, search, notes, tasks, volume...)
   brain.py      OpenJarvis AI se baat
   speaker.py    awaaz (Edge neural voice / offline pyttsx3)
+  whatsapp.py   WhatsApp Web automation (chat, type, confirm pe send)
+  coder.py      bol ke code likhwana + VS Code / run
   settings.py   saari settings
 start_mikasa.bat / start_mikasa.sh
 setup_autostart.bat / remove_autostart.bat   (Windows autostart on/off)

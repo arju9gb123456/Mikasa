@@ -17,7 +17,7 @@ import sys
 import urllib.parse
 import webbrowser
 from dataclasses import dataclass
-from typing import Optional
+from typing import Callable, Optional
 
 from mikasa import settings
 
@@ -308,6 +308,7 @@ class Reply:
     text: str
     sleep: bool = False   # wapas sirf "Mikasa" pe jaagegi
     quit: bool = False    # program band
+    then: Optional[Callable[[], "Reply"]] = None  # bolne ke baad ye kaam (lamba kaam: code, WhatsApp)
 
 
 QUIT_PHRASES = _n([
@@ -335,9 +336,188 @@ TASK_DONE = _n(["ho gaya", "हो गया", "ho gayi", "हो गई", "ho g
 TASK_ADD_STEMS = _n(["add", "एड", "jod", "जोड", "daal", "dal", "डाल", "bana", "बना", "likh", "लिख", "yaad", "याद"])
 
 
+
+# ── identity ──
+WHO_MADE = _n(["kisne", "किसने", "who made", "who created", "who built", "creator", "क्रिएटर",
+               "banane wala", "बनाने वाला", "banaya kisne", "malik", "मालिक", "owner", "developer"])
+WHO_ARE_YOU = _n(["kaun ho", "कौन हो", "who are you", "apna naam", "अपना नाम", "tumhara naam",
+                  "तुम्हारा नाम", "aapka naam", "आपका नाम", "your name", "introduce", "parichay", "परिचय"])
+
+# ── code ──
+CODE_WORDS = _n(["code", "कोड", "program", "प्रोग्राम", "script", "स्क्रिप्ट", "website", "वेबसाइट",
+                 "webpage", "html", "python", "पायथन", "function", "फंक्शन", "game", "गेम", "javascript"])
+CODE_WRITE_STEMS = _n(["likh", "लिख", "bana", "बना", "write", "generat", "creat", "kar", "कर", "de", "दे"])
+CODE_RUN_STEMS = _n(["run", "रन", "chala", "चला", "execut", "test", "टेस्ट"])
+
+# ── WhatsApp ──
+MSG_WORDS = _n(["message", "messages", "msg", "मैसेज", "मेसेज", "मैसेज़", "sms", "text", "टेक्स्ट"])
+CHAT_WORDS = _n(["chat", "चैट"])
+WA_SEPARATORS = set(_n(["aur", "और", "phir", "फिर", "then", "and", "pe", "par", "पर", "पे", "mein", "में",
+                        "web", "वेब", "browser", "ब्राउजर", "ek", "एक", "please", "zara", "जरा", "kholo",
+                        "खोलो", "open", "karo", "करो", "mujhe", "मुझे", "mere", "मेरे"]))
+MSG_EDGE = set(_n(["message", "msg", "मैसेज", "मेसेज", "bhejo", "bhej", "भेजो", "भेज", "send", "karo", "करो",
+                   "kar", "कर", "type", "टाइप", "likho", "लिखो", "likh", "लिख", "do", "दो", "de", "दे", "ek",
+                   "एक", "ye", "yeh", "ये", "यह", "pe", "par", "पर", "पे", "whatsapp", "व्हाट्सएप", "dena",
+                   "देना", "karna", "करना", "hai", "है", "ki", "कि", "की", "ke", "के"]))
+YES_WORDS = set(_n(["haan", "han", "ha", "haa", "हां", "हा", "हाँ", "yes", "yeah", "yep", "ok", "okay", "ओके",
+                    "bhej", "bhejo", "भेज", "भेजो", "send", "theek", "ठीक", "thik", "bilkul", "बिलकुल", "sure"]))
+NO_WORDS = set(_n(["nahi", "nahin", "नहीं", "नही", "no", "nope", "mat", "मत", "cancel", "ruko", "रुको",
+                   "rehne", "रहने", "galat", "गलत"]))
+
+
+def _wa_contact(tokens: list[str], end: int) -> str:
+    """tokens[:end] mein se contact ka naam: aakhri separator ke baad wale words."""
+    start = 0
+    for i in range(end - 1, -1, -1):
+        tok = tokens[i]
+        if tok in WA_SEPARATORS or find_app(tok)[0] == "whatsapp" or any(tok.startswith(s) for s in OPEN_STEMS):
+            start = i + 1
+            break
+    return " ".join(tokens[start:end]).strip()
+
+
+def parse_whatsapp(t: str) -> Optional[tuple[str, str, bool]]:
+    """(contact, message, sirf_chat?) ya None agar WhatsApp command nahi hai."""
+    tokens = t.split()
+    app_key, _ = find_app(t)
+    has_msg = any(tok in MSG_WORDS for tok in tokens)
+    has_chat = any(tok in CHAT_WORDS for tok in tokens)
+    # "priti ko good morning bhej do" - bina "whatsapp"/"message" bole bhi
+    has_send_to = any(tok in ("ko", "को") for tok in tokens) and has_stem(tokens, _n(["bhej", "भेज", "send"])) \
+        and app_key in (None, "whatsapp")
+    if not (app_key == "whatsapp" or has_msg or has_send_to or (has_chat and app_key in (None, "whatsapp"))):
+        return None
+    # "rahul ki chat kholo"
+    if has_chat:
+        ci = next(i for i, tok in enumerate(tokens) if tok in CHAT_WORDS)
+        j = ci - 1 if ci > 0 and tokens[ci - 1] in set(_n(["ki", "की", "ka", "का", "ke", "के", "wali", "वाली"])) else ci
+        contact = _wa_contact(tokens, j)
+        rest = tokens[ci + 1:]
+        message = ""
+        if any(tok in MSG_WORDS for tok in rest) or has_phrase(" ".join(rest), _n(["type", "टाइप"])):
+            ko = [i for i, tok in enumerate(rest) if tok in ("ki", "कि", "that")]
+            body = rest[ko[0] + 1:] if ko else rest
+            message = " ".join(_strip_edges(body, MSG_EDGE))
+        return contact, message, not message
+    # "rahul ko message bhejo ki ..." / "rahul ko hello bhejo"
+    ko_idx = [i for i, tok in enumerate(tokens) if tok in ("ko", "को")]
+    if not ko_idx:
+        return ("", "", True) if app_key == "whatsapp" else ("", "", False)
+    k = ko_idx[0]
+    contact = _wa_contact(tokens, k)
+    after = tokens[k + 1:]
+    ki = [i for i, tok in enumerate(after) if tok in ("ki", "कि", "that")]
+    body = after[ki[0] + 1:] if ki else after
+    message = " ".join(_strip_edges(body, MSG_EDGE))
+    return contact, message, False
+
+
 class Commands:
-    def __init__(self) -> None:
-        self.pending: Optional[str] = None  # "note" / "task" jab content ka intezaar ho
+    def __init__(self, brain=None) -> None:
+        self.pending: Optional[str] = None  # "note" / "task" / "wa_*" jab jawab ka intezaar ho
+        self.brain = brain
+        self._coder = None
+        self._wa = None
+        self._wa_contact: str = ""
+        self._wa_retry = 0
+
+    # ── lazy helpers ──
+    def coder(self):
+        if self._coder is None:
+            from mikasa.coder import Coder
+
+            self._coder = Coder(self.brain)
+        return self._coder
+
+    def wa(self):
+        if self._wa is None:
+            from mikasa.whatsapp import WhatsAppBot
+
+            self._wa = WhatsAppBot()
+        return self._wa
+
+    def close(self) -> None:
+        if self._wa is not None:
+            self._wa.close()
+
+    # ── WhatsApp flow ──
+    def whatsapp_flow(self, contact: str, message: str, ask_message: bool) -> Reply:
+        def after_login() -> Reply:
+            bot = self.wa()
+            if not bot.wait_login(120):
+                return Reply("WhatsApp login nahi hua. QR scan karke phir boliye.")
+            if not contact:
+                if ask_message:
+                    self.pending = "wa_contact"
+                    return Reply("WhatsApp Web khul gaya. Kisko message bhejna hai?")
+                return Reply("WhatsApp Web khul gaya.")
+            try:
+                name = bot.open_chat(contact)
+            except Exception as exc:
+                print(f"[Mikasa] WhatsApp chat error: {exc}")
+                name = None
+            if not name:
+                return Reply(f"{contact} naam ki chat nahi mili. Naam phir se boliye ya settings mein CONTACTS add kariye.")
+            self._wa_contact = name
+            if not message:
+                if ask_message:
+                    self.pending = "wa_msg"
+                    return Reply(f"{name} ki chat khul gayi. Kya message likhun?")
+                return Reply(f"{name} ki chat khul gayi.")
+            return self._wa_type(message)
+
+        def start() -> Reply:
+            bot = self.wa()
+            try:
+                bot.open()
+            except Exception as exc:
+                print(f"[Mikasa] WhatsApp browser error: {exc}")
+                return Reply("WhatsApp ke liye browser nahi khul paya. Edge ya Chrome check kariye.")
+            if not bot.is_logged_in(15):
+                return Reply("Phone se WhatsApp Web ka QR code scan kariye. Main do minute wait kar rahi hoon.",
+                             then=after_login)
+            return after_login()
+
+        return Reply("WhatsApp Web khol rahi hoon.", then=start)
+
+    def _wa_type(self, message: str) -> Reply:
+        message = message.strip()
+        message = message[:1].upper() + message[1:]
+        try:
+            self.wa().type_message(message)
+        except Exception as exc:
+            print(f"[Mikasa] WhatsApp type error: {exc}")
+            return Reply("Message type nahi ho paya. Chat khuli hai kya, check kariye.")
+        self.pending = "wa_confirm"
+        self._wa_retry = 0
+        return Reply(f"{self._wa_contact} ko ye message type kar diya: {message}. Bhej dun? Haan ya na boliye.")
+
+    def _wa_pending(self, text: str, tokens: list[str]) -> Reply:
+        kind = self.pending
+        if kind == "wa_contact":
+            self.pending = None
+            return self.whatsapp_flow(text.strip(), "", True)
+        if kind == "wa_msg":
+            self.pending = None
+            return self._wa_type(text)
+        # wa_confirm
+        if any(tok in NO_WORDS for tok in tokens):
+            self.pending = None
+            self.wa().clear_message()
+            return Reply("Theek hai, message nahi bheja. Hata diya.")
+        if any(tok in YES_WORDS for tok in tokens):
+            self.pending = None
+            try:
+                self.wa().send()
+            except Exception as exc:
+                print(f"[Mikasa] WhatsApp send error: {exc}")
+                return Reply("Message bhej nahi paayi. Browser check kariye.")
+            return Reply(f"Message bhej diya {self._wa_contact} ko.")
+        self._wa_retry += 1
+        if self._wa_retry >= 2:
+            self.pending = None
+            return Reply("Samajh nahi aaya, isliye message nahi bheja. Type kiya hua chat mein pada hai.")
+        return Reply("Bhejna hai to haan boliye, nahi to na.")
 
     def handle(self, text: str) -> Optional[Reply]:
         t = normalize(text)
@@ -345,6 +525,21 @@ class Commands:
         if not tokens:
             return None
         name = settings.USER_NAME
+
+        # 0. WhatsApp ka pending sawaal (haan/na, kisko, kya message)
+        if self.pending and self.pending.startswith("wa_"):
+            return self._wa_pending(text, tokens)
+
+        # 0.1 pehchaan
+        about_me = has_stem(tokens, _n(["banaya", "बनाया", "bana", "बना", "made", "creat", "built", "tumh", "तुम्ह",
+                                        "tujh", "तुझ", "aapk", "आपक", "mikasa", "मिकासा", "you"]))
+        if len(tokens) <= 10 and has_phrase(t, WHO_MADE) and (about_me or not has_phrase(t, _n(["kisne", "किसने"]))):
+            return Reply(f"Mujhe {settings.CREATOR_NAME} sir ne banaya hai. "
+                         f"Main {name} ki personal AI assistant Mikasa hoon.")
+        if len(tokens) <= 8 and has_phrase(t, WHO_ARE_YOU):
+            return Reply(f"Main Mikasa hoon, {name} ki personal AI assistant. Mujhe {settings.CREATOR_NAME} sir ne "
+                         "banaya hai. Main aapke laptop pe apps khol sakti hoon, search, notes, tasks, code aur "
+                         "WhatsApp message kar sakti hoon.")
 
         # 1. quit / sleep
         if has_phrase(t, QUIT_PHRASES) and len(tokens) <= 5:
@@ -364,6 +559,31 @@ class Commands:
             self.pending = None
             add_task(text.strip())
             return Reply("Task add kar diya.")
+
+        # 2.5 code likhna / chalana (VS Code)
+        vs_names = [normalize(n) for n in settings.APPS.get("vscode", {}).get("names", [])]
+        body = f" {t} "
+        for vn in sorted(vs_names, key=len, reverse=True):
+            body = body.replace(f" {vn} ", " ")
+        btoks = body.split()
+        strong_write = has_stem(btoks, _n(["likh", "लिख", "bana", "बना", "write", "generat", "creat"]))
+        core_code = any(tok in _n(["code", "कोड", "program", "प्रोग्राम", "script", "स्क्रिप्ट"]) for tok in btoks)
+        if any(tok in CODE_WORDS for tok in btoks) and not has_stem(btoks, SEARCH_STEMS):
+            if core_code and has_stem(btoks, CODE_RUN_STEMS) and not strong_write:
+                return Reply("Code chala rahi hoon.", then=lambda: Reply(self.coder().run_last()))
+            if strong_write or (core_code and has_stem(btoks, CODE_WRITE_STEMS)):
+                task = " ".join(btoks)
+                return Reply("Theek hai, code likh rahi hoon. Thoda time lagega.",
+                             then=lambda: Reply(self.coder().write(task)))
+
+        # 2.6 WhatsApp Web: chat kholna / message type karna
+        wa = parse_whatsapp(t)
+        if wa is not None and (settings.WHATSAPP_MODE == "web" or wa[0] or wa[1]):
+            contact, message, only_open = wa
+            if contact or message or has_stem(tokens, OPEN_STEMS) or any(tok in MSG_WORDS for tok in tokens) \
+                    or len(tokens) <= 2:
+                ask = not only_open or any(tok in MSG_WORDS for tok in tokens)
+                return self.whatsapp_flow(contact, message, ask)
 
         # 3. notes
         if has_phrase(t, NOTE_TRIGGERS) and not has_phrase(t, TASK_STRONG):

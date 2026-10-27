@@ -6,7 +6,8 @@ Made by Arjun Ahirwar, built on OpenJarvis (Apache-2.0).
 from pathlib import Path
 
 # ── Tum ───────────────────────────────────────────────────────────────────
-USER_NAME = "Arjun"
+USER_NAME = "Arjun sir"          # Mikasa tumhe hamesha isi naam se bulayegi
+CREATOR_NAME = "Arjun Ahirwar"   # "Mikasa kisne banaya?" ka jawab
 
 # ── Wake word ─────────────────────────────────────────────────────────────
 # Whisper "Mikasa" ko kabhi Roman mein, kabhi Devanagari mein likhta hai,
@@ -49,7 +50,16 @@ BRAIN_TOOLS = ["web_search", "calculator", "think", "get_weather"]
 BRAIN_MAX_SPOKEN_CHARS = 450
 HISTORY_TURNS = 6          # pichhli kitni baatein yaad rakhe
 
-# ── Data (notes, tasks, screenshots) ──────────────────────────────────────
+# ── WhatsApp ──────────────────────────────────────────────────────────────
+WHATSAPP_MODE = "web"        # "web" = browser mein WhatsApp Web (chat/message kar sakti hai), "app" = desktop app
+WHATSAPP_BROWSER = "msedge"  # "msedge" (Windows mein hamesha hota hai) / "chrome"
+# Jo naam tum bologe -> WhatsApp mein saved naam ya number (91 ke saath). Zarurat ho to add karo:
+CONTACTS = {
+    # "honey": "Priti",
+    # "rahul": "919876543210",
+}
+
+# ── Data (notes, tasks, screenshots, code) ──────────────────────────────────────
 DATA_DIR = Path.home() / "Mikasa"
 
 # ── Apps / websites jo "khol" bolne pe khulenge ───────────────────────────

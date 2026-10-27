@@ -197,6 +197,7 @@ mikasa = [
     "miniaudio>=1.59",
     "pyttsx3>=2.90",
     "pyautogui>=0.9.54",
+    "playwright>=1.40",  # WhatsApp Web automation (Edge/Chrome)
 ]
 
 eval-wandb = ["wandb>=0.17"]

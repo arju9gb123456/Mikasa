@@ -29,8 +29,8 @@ class Mikasa:
 
         self.text_mode = text_mode
         self.mute = mute
-        self.commands = Commands()
         self.brain = Brain()
+        self.commands = Commands(brain=self.brain)
         self.speaker = None
         self.listener = None
         self.transcriber = None
@@ -62,11 +62,33 @@ class Mikasa:
             if self.listener:
                 self.listener.resume()
 
+    @staticmethod
+    def with_title(text: str) -> str:
+        """Har jawab mein "Arjun sir" - agar pehle se nahi hai to shuru mein jodo."""
+        title = settings.USER_NAME
+        if not text or title.lower() in text.lower():
+            return text
+        return f"{title}, {text}"
+
     def respond(self, command: str) -> Reply:
         reply = self.commands.handle(command)
         if reply is None:
             print("\033[2m(soch rahi hoon...)\033[0m")
             reply = Reply(self.brain.answer(command))
+        return reply
+
+    def deliver(self, reply: Reply) -> Reply:
+        """Reply bolo; agar uske baad koi kaam (then) hai to wo karo aur uska jawab bhi bolo."""
+        self.say(self.with_title(reply.text))
+        steps = 0
+        while reply.then is not None and steps < 5:
+            steps += 1
+            try:
+                reply = reply.then()
+            except Exception as exc:
+                print(f"[Mikasa] Kaam mein error: {exc}")
+                reply = Reply("Sorry, ye kaam karte waqt error aaya.")
+            self.say(reply.text)
         return reply
 
     def process(self, heard: str) -> bool:
@@ -85,8 +107,7 @@ class Mikasa:
             self.awake_until = time.time() + settings.FOLLOWUP_SECONDS
             return True
 
-        reply = self.respond(command)
-        self.say(reply.text)
+        reply = self.deliver(self.respond(command))
         if reply.quit:
             return False
         self.awake_until = 0.0 if reply.sleep else time.time() + settings.FOLLOWUP_SECONDS
@@ -122,6 +143,7 @@ class Mikasa:
         finally:
             if self.listener:
                 self.listener.stop()
+            self.commands.close()
             self.brain.close()
 
 
