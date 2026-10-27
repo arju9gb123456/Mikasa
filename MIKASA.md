@@ -144,6 +144,21 @@ Mikasa start hote hi ek window khulti hai (Edge app mode), jisme ye sab hai:
 
 Window band ho jaye to browser mein `http://127.0.0.1:7878` kholo. Screen nahi chahiye to `start_mikasa.bat --no-hud`, ya `settings.py` mein `HUD_ENABLED = False`.
 
+**Apni avatar photo:** koi bhi image (PNG best, transparent background wali sabse achhi lagti hai) apne Mikasa data folder `C:\Users\<aap>\Mikasa\` mein **`avatar.png`** naam se rakh do (ya `avatar.jpg` / `avatar.gif`). Mikasa restart karo, screen pe wahi dikhegi aur bolte waqt hilegi/chamkegi. Ye photo sirf aapke laptop pe rehti hai, GitHub pe nahi jaati.
+
+**Reminders (time pe khud bolti hai):**
+
+| Bolo | Kab yaad dilayegi |
+|---|---|
+| "Mikasa, 5 baje yaad dila dena gym jana hai" | Aaj shaam 5:00 |
+| "Mikasa, 10 minute baad yaad dilana chai" | 10 min baad |
+| "Mikasa, kal subah 7 baje yaad dila dena assignment submit karna hai" | Kal 7:00 AM |
+| "Mikasa, raat 10 baje padhai yaad dilana" / "saadhe 4 baje" / "do ghante baad" / "parso 11 baje" | Wahi time |
+
+Time aate hi Mikasa bolti hai *"Arjun sir! Yaad dila rahi hoon: gym jana hai. Bhool mat jaana, okay?"*, aur screen pe ⏰ dikhta hai. Laptop band tha aur reminder nikal gaya, to agli baar start hote hi bata deti hai.
+
+**Yaad rakhna:** "Mikasa, yaad rakhna mera exam 10 November ko hai" bologe to Mikasa ye baat aage ki baat-cheet mein yaad rakhti hai (jaise "exam ki taiyari kaisi chal rahi hai?").
+
 **Personality:** Mikasa ab pyaari, chulbuli, caring ladki ki tarah baat karti hai: emotions, masti, thoda nakhre aur teasing, aapki fikr (khana khaya?). Kisi aur AI ki tareef karoge to mazaak mein jealous bhi hogi, par kaam kabhi mana nahi karti. Andaaz badalna ho to `mikasa/persona.py` edit karo.
 
 ## Accuracy, speed aur awaaz
@@ -194,7 +209,6 @@ Naya app add karne ka example (Amazon):
 ## Abhi kya nahi kar sakti (next version mein)
 
 - **Mail likh ke bhejna:** Gmail abhi sirf khulta/search hota hai.
-- **Reminder ka alarm:** "yaad dila dena" abhi task list mein jaata hai, time pe khud nahi bolti.
 - **Gmail padh ke sunana** (kaunse mail pending hain): iske liye OpenJarvis ka `jarvis connect gdrive` + digest chahiye (`SETUP_HINGLISH.md` dekho), Mikasa mein jodna baaki hai.
 - **Shell commands:** safety ke liye Mikasa ka AI laptop pe koi bhi command khud nahi chala sakta. Sirf upar wale fixed kaam karta hai.
 
@@ -211,6 +225,7 @@ mikasa/
   coder.py      bol ke code likhwana + VS Code / run
   router.py     smart samajh: galat suna text -> sahi command (Ollama)
   persona.py    personality, greetings, andaaz
+  reminders.py  time samajhna (5 baje, 10 min baad, kal subah) + time pe yaad dilana
   hud/          screen: server.py (live status/stats) + index.html (rings, avatar, chat)
   settings.py   saari settings
 start_mikasa.bat / start_mikasa.sh

@@ -27,6 +27,18 @@ from mikasa import settings
 _HERE = Path(__file__).parent
 
 
+def find_avatar() -> Optional[Path]:
+    """Apni avatar image: settings.AVATAR_IMAGE, ya Mikasa folder mein avatar.png/jpg/gif/webp."""
+    if settings.AVATAR_IMAGE:
+        p = Path(settings.AVATAR_IMAGE).expanduser()
+        return p if p.is_file() else None
+    for ext in (".png", ".jpg", ".jpeg", ".gif", ".webp"):
+        p = settings.DATA_DIR / f"avatar{ext}"
+        if p.is_file():
+            return p
+    return None
+
+
 class Hud:
     def __init__(self) -> None:
         self.commands: "queue.Queue[str]" = queue.Queue()
@@ -110,6 +122,13 @@ class Hud:
                     html = (_HERE / "index.html").read_text(encoding="utf-8")
                     html = html.replace("{{USER}}", settings.USER_NAME).replace("{{CREATOR}}", settings.CREATOR_NAME)
                     return self._send(200, html.encode("utf-8"), "text/html; charset=utf-8")
+                if self.path.startswith("/avatar"):
+                    img = find_avatar()
+                    if img is None:
+                        return self._send(404, b"no avatar", "text/plain")
+                    ctype = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+                             ".webp": "image/webp"}.get(img.suffix.lower(), "application/octet-stream")
+                    return self._send(200, img.read_bytes(), ctype)
                 if self.path == "/stats":
                     return self._send(200, json.dumps(hud.stats()).encode(), "application/json")
                 if self.path == "/events":
@@ -122,7 +141,7 @@ class Hud:
                         hud._clients.append(q)
                     try:
                         hello = {"type": "hello", "state": hud._state["state"], "info": hud._state["info"],
-                                 "log": hud._log[-30:]}
+                                 "log": hud._log[-30:], "avatar": find_avatar() is not None}
                         self.wfile.write(f"data: {json.dumps(hello, ensure_ascii=False)}\n\n".encode())
                         self.wfile.flush()
                         while True:

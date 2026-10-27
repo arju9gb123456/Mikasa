@@ -74,6 +74,9 @@ HISTORY_TURNS = 6          # pichhli kitni baatein yaad rakhe
 HUD_ENABLED = True         # laal rings + avatar + stats wali screen
 HUD_OPEN_WINDOW = True     # start pe window khud khule (Edge app mode)
 HUD_PORT = 7878
+# Apni pasand ki avatar photo: Mikasa folder (C:\Users\<tum>\Mikasa) mein "avatar.png" / "avatar.jpg" / "avatar.gif"
+# naam se rakh do, ya yahan poora path likho. Khaali = Mikasa ka default avatar.
+AVATAR_IMAGE = ""
 
 # ── WhatsApp ──────────────────────────────────────────────────────────────
 WHATSAPP_MODE = "web"        # "web" = browser mein WhatsApp Web (chat/message kar sakti hai), "app" = desktop app

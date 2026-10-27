@@ -98,6 +98,14 @@ class Mikasa:
             ok = self.router.warmup()
             self._info(ai=f"{settings.BRAIN_MODEL} · {'ready' if ok else 'offline'}")
 
+        # Reminders: time aane pe inbox mein daalo, main loop bolega
+        from mikasa.commands import load_tasks, save_tasks
+        from mikasa.reminders import ReminderWatcher
+
+        self.reminders = ReminderWatcher(load_tasks, save_tasks,
+                                         lambda task, late: self.inbox.put(f"\x00REMIND:{int(late)}:{task}"))
+        self.reminders.start()
+
         # AI model background mein GPU/RAM mein load karo taaki pehla jawab tez aaye
         threading.Thread(target=warm, daemon=True).start()
         threading.Thread(target=self.brain._get, daemon=True).start()
@@ -208,6 +216,13 @@ class Mikasa:
                 if typed is not None:
                     if typed == "\x00EOF":
                         break
+                    if typed.startswith("\x00REMIND:"):
+                        _, late, task = typed.split(":", 2)
+                        if self.hud:
+                            self.hud.emit("reminder", text=task)
+                        self.awake_until = time.time() + settings.FOLLOWUP_SECONDS
+                        self.say(persona.reminder(task, late == "1"))
+                        continue
                     if not self.process(typed, force=True):
                         break
                     continue

@@ -85,3 +85,12 @@ _KEEP_CAPS = {label.split()[0] for label in
 
 def thinking() -> str:
     return _pick(["Hmm, ek second...", "Ruko, sochne do...", "Acha, dekhti hoon..."])
+
+
+def reminder(task: str, late: bool = False) -> str:
+    if late:
+        return _pick(["{t}, ek reminder ka time nikal gaya tha: " + task + ". Ab kar lijiye na, please!",
+                      "Arey {t}, maine yaad dilana tha, aap shayad busy the: " + task + "."])
+    return _pick(["{t}! Yaad dila rahi hoon: " + task + ". Bhool mat jaana, okay?",
+                  "Oye {t}, time ho gaya! " + task + ". Chaliye, jaldi kijiye!",
+                  "{t}, aapne kaha tha yaad dilaun: " + task + ". Main hoon na, bhoolne nahi dungi!"])

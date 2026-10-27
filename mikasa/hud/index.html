@@ -88,6 +88,17 @@
   .hairflow { transform-origin: 50% 20%; animation: sway 6s ease-in-out infinite; }
   @keyframes sway { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(1.2deg); } }
 
+  .avimg { display: none; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    max-height: 46vh; max-width: 30vw; object-fit: contain; transform-origin: 50% 100%;
+    -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent 100%); mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+    filter: drop-shadow(0 0 18px rgba(255,59,59,.35)); animation: idlefloat 4s ease-in-out infinite; }
+  body.has-avatar .avimg { display: block; }
+  body.has-avatar .avatar { display: none; }
+  @keyframes idlefloat { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-6px); } }
+  @keyframes talk { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.025) translateY(-3px); } }
+  body.speaking .avimg { animation: talk .22s ease-in-out infinite alternate; filter: drop-shadow(0 0 26px rgba(255,95,162,.6)); }
+  body.listening .avimg { filter: drop-shadow(0 0 22px rgba(57,229,140,.45)); }
+
   /* bubble above avatar */
   .bubble { position: absolute; left: 50%; top: 62px; transform: translateX(-50%);
     max-width: min(520px, 86%); padding: 10px 14px; border-radius: 14px; background: rgba(20,10,14,.88);
@@ -162,6 +173,7 @@
     </div>
     <div class="bubble" id="bubble"></div>
 
+    <img class="avimg" id="avimg" alt="Mikasa">
     <!-- Original avatar (Mikasa ka apna design) -->
     <div class="avatar">
       <svg viewBox="0 0 240 260" aria-label="Mikasa avatar">
@@ -259,8 +271,9 @@ const STATE_TEXT = { idle: 'Ready · "Mikasa" boliye', listening: 'Sun rahi hoon
 const MOUTHS = ['M112 154 Q120 160 128 154', 'M111 152 Q120 166 129 152 Q120 157 111 152', 'M113 151 Q120 170 127 151 Q120 155 113 151', 'M110 153 Q120 163 130 153 Q120 158 110 153'];
 let mouthTimer = null, bubbleTimer = null;
 
+let hasAvatar = false;
 function setState(s) {
-  document.body.className = s || 'idle';
+  document.body.className = (s || 'idle') + (hasAvatar ? ' has-avatar' : '');
   $('stateText').textContent = STATE_TEXT[s] || s;
   clearInterval(mouthTimer);
   if (s === 'speaking') {
@@ -308,6 +321,8 @@ function connect() {
   es.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.type === 'hello') {
+      hasAvatar = !!m.avatar;
+      if (hasAvatar) $('avimg').src = '/avatar?' + Date.now();
       setState(m.state); setInfo(m.info || {});
       $('log').innerHTML = '';
       (m.log || []).forEach((x) => addMsg(x.type === 'heard' ? 'you' : 'her', x.text));
@@ -315,6 +330,7 @@ function connect() {
     else if (m.type === 'info') setInfo(m);
     else if (m.type === 'heard') addMsg('you', m.text);
     else if (m.type === 'reply') { addMsg('her', m.text); showBubble(m.text); }
+    else if (m.type === 'reminder') { showBubble('⏰ ' + m.text); }
   };
 }
 

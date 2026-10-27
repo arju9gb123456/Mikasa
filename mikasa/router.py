@@ -26,9 +26,9 @@ open_app      {"app": KEY}                    app/website kholna
 close_app     {"app": KEY}                    app band karna
 search        {"app": KEY, "query": "..."}    kisi site pe search (google, youtube, gmail, maps, github, linkedin, instagram, spotify, drive)
 play          {"query": "..."}                YouTube pe gaana/video chalana
-note_add      {"text": "..."}                 note save
+note_add      {"text": "..."}                 note save / "yaad rakhna" wali baat
 note_list     {}                              notes sunana
-task_add      {"text": "..."}                 task/reminder add
+task_add      {"text": "...", "due": "YYYY-MM-DD HH:MM"}  task/reminder add; time bola ho to due bharo (abhi ke time se calculate karo), warna due khaali
 task_list     {}                              pending tasks batana
 task_done     {"text": "..."}                 task done mark
 whatsapp      {"contact": "...", "message": "..."}  WhatsApp Web pe chat kholna / message type karna (message khaali ho sakta hai)
@@ -63,6 +63,8 @@ Available app KEYs: {apps}
 Intents (naam, fields, matlab):
 {intents}
 
+{memory}
+
 Sirf ek JSON object do: {{"intent": "...", ...fields}}. Koi aur text nahi.
 chat/unclear ka "reply": Hinglish (Roman script), upar wali personality mein, 1-3 natural sentences, bolne layak, \
 koi markdown/emoji nahi, "{user}" kehkar. Abhi ka time: {now}."""
@@ -70,7 +72,7 @@ koi markdown/emoji nahi, "{user}" kehkar. Abhi ka time: {now}."""
 
 class Router:
     def __init__(self) -> None:
-        self._history: deque[tuple[str, str]] = deque(maxlen=4)
+        self._history: deque[tuple[str, str]] = deque(maxlen=8)
         self._think_ok = True
         self.base = settings.OLLAMA_URL.rstrip("/")
 
@@ -81,8 +83,28 @@ class Router:
             apps=", ".join(settings.APPS.keys()),
             intents=INTENTS.strip(),
             personality=persona.personality(),
+            memory=self._memory(),
             now=_dt.datetime.now().strftime("%A %d %B %Y, %I:%M %p"),
         )
+
+    @staticmethod
+    def _memory() -> str:
+        """Jo Arjun sir ne yaad rakhne ko kaha + pending tasks, taaki Mikasa baat-cheet mein yaad rakhe."""
+        try:
+            from mikasa.commands import load_tasks, recent_notes
+
+            notes = recent_notes(12)
+            tasks = [x for x in load_tasks() if not x.get("done")][:8]
+        except Exception:
+            return ""
+        lines = []
+        if notes:
+            lines.append("Arjun sir ne ye baatein yaad rakhne/likhne ko kahi thi (zarurat ho to inka zikr karo):")
+            lines += [f"- {n}" for n in notes]
+        if tasks:
+            lines.append("Unke pending tasks/reminders:")
+            lines += [f"- {x['task']}" + (f" (due {x['due']})" if x.get("due") else "") for x in tasks]
+        return "\n".join(lines)
 
     def _post(self, payload: dict, timeout: float) -> dict:
         r = httpx.post(f"{self.base}/api/chat", json=payload, timeout=timeout)

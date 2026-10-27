@@ -308,10 +308,49 @@ def save_tasks(tasks: list[dict]) -> None:
     _tasks_file().write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def add_task(content: str) -> None:
+def add_task(content: str, due: Optional[_dt.datetime] = None) -> None:
     tasks = load_tasks()
-    tasks.append({"task": content, "done": False, "added": _dt.datetime.now().isoformat(timespec="minutes")})
+    item = {"task": content, "done": False, "added": _dt.datetime.now().isoformat(timespec="minutes")}
+    if due is not None:
+        item["due"] = due.isoformat(timespec="minutes")
+    tasks.append(item)
     save_tasks(tasks)
+
+
+def task_reply(content: str, source_text: str = "", due_hint: str = "") -> "Reply":
+    """Task save karo; time bola ho to reminder lagao. Friendly jawab return."""
+    from mikasa.reminders import parse_due, spoken_time
+
+    due = None
+    if due_hint:
+        try:
+            due = _dt.datetime.fromisoformat(due_hint.strip().replace(" ", "T"))
+            if due <= _dt.datetime.now():
+                due = None
+        except Exception:
+            due = None
+    if due is None:
+        due = parse_due(source_text or content)
+    if due is not None:
+        from mikasa.reminders import strip_time
+
+        content = strip_time(content)
+    add_task(content, due)
+    if due is not None:
+        return Reply(f"Pakka, {spoken_time(due)} yaad dila dungi: {content}.")
+    return Reply(f"Task add kar diya: {content}")
+
+
+def _task_line(i: int, x: dict) -> str:
+    when = ""
+    if x.get("due"):
+        try:
+            from mikasa.reminders import spoken_time
+
+            when = f" ({spoken_time(_dt.datetime.fromisoformat(x['due']))})"
+        except Exception:
+            when = ""
+    return f"{i + 1}, {x['task']}{when}"
 
 
 # ── the parser ────────────────────────────────────────────────────────────
@@ -578,8 +617,7 @@ class Commands:
             return Reply("Note save kar diya.")
         if self.pending == "task":
             self.pending = None
-            add_task(text.strip())
-            return Reply("Task add kar diya.")
+            return task_reply(text.strip(), text)
 
         # 2.5 code likhna / chalana (VS Code)
         vs_names = [normalize(n) for n in settings.APPS.get("vscode", {}).get("names", [])]
@@ -623,6 +661,8 @@ class Commands:
                 self.pending = "note"
                 return Reply("Haan, kya likhun?")
             add_note(content)
+            if has_phrase(t, _n(["yaad rakhna", "याद रखना", "yaad rakh", "याद रख"])):
+                return Reply(f"Pakka yaad rakhungi: {content}.")
             return Reply(f"Note save kar diya: {content}")
 
         # 4. tasks
@@ -648,14 +688,13 @@ class Commands:
                                                                  "pending", "baki", "बाकी", "kya kya", "क्या क्या"])):
                 if not pending:
                     return Reply("Koi pending task nahi hai. Sab clear!")
-                items = ". ".join(f"{i + 1}, {x['task']}" for i, x in enumerate(pending[:7]))
+                items = ". ".join(_task_line(i, x) for i, x in enumerate(pending[:7]))
                 return Reply(f"Aapke {len(pending)} pending tasks hain. {items}")
             content = _extract_around(tokens, TASK_STRONG + TASK_WEAK, TASK_FILLER)
             if not content:
                 self.pending = "task"
                 return Reply("Kaunsa task add karun?")
-            add_task(content)
-            return Reply(f"Task add kar diya: {content}")
+            return task_reply(content, text)
 
         # 5. volume / screenshot
         if has_stem(tokens, _n(["volume", "वॉल्यूम", "वोल्यूम", "awaz", "awaaz", "आवाज"])):
@@ -758,13 +797,12 @@ class Commands:
             if not g("text"):
                 self.pending = "task"
                 return Reply("Kaunsa task add karun?")
-            add_task(g("text"))
-            return Reply(f"Task add kar diya: {g('text')}")
+            return task_reply(g("text"), g("text"), g("due"))
         if intent == "task_list":
             pending = [x for x in load_tasks() if not x.get("done")]
             if not pending:
                 return Reply("Koi pending task nahi hai. Sab clear!")
-            items = ". ".join(f"{i + 1}, {x['task']}" for i, x in enumerate(pending[:7]))
+            items = ". ".join(_task_line(i, x) for i, x in enumerate(pending[:7]))
             return Reply(f"Aapke {len(pending)} pending tasks hain. {items}")
         if intent == "task_done":
             tasks = load_tasks()
