@@ -96,7 +96,9 @@ class Mikasa:
 
         def warm():
             ok = self.router.warmup()
-            self._info(ai=f"{settings.BRAIN_MODEL} · {'ready' if ok else 'offline'}")
+            share = self.router.gpu_share
+            where = f" · GPU {share:.0%}" if (ok and share is not None) else ""
+            self._info(ai=f"{settings.BRAIN_MODEL} · {'ready' if ok else 'offline'}{where}")
 
         # Reminders: time aane pe inbox mein daalo, main loop bolega
         from mikasa.commands import load_tasks, save_tasks

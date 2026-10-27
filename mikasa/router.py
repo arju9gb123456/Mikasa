@@ -74,6 +74,7 @@ class Router:
     def __init__(self) -> None:
         self._history: deque[tuple[str, str]] = deque(maxlen=8)
         self._think_ok = True
+        self.gpu_share: Optional[float] = None
         self.base = settings.OLLAMA_URL.rstrip("/")
 
     def _system(self) -> str:
@@ -134,11 +135,28 @@ class Router:
         """Model ko GPU/RAM mein pehle se load kar do, taaki pehla jawab tez aaye."""
         try:
             self._post(self._payload([{"role": "user", "content": "hi"}], False, 1), timeout=120)
-            print("[Mikasa] AI model ready.")
+            self.gpu_share = self._gpu_share()
+            if self.gpu_share is not None and self.gpu_share < 0.95:
+                print(f"[Mikasa] Dhyan do: AI model ka sirf {self.gpu_share:.0%} GPU pe hai, baaki CPU pe -> jawab SLOW honge.\n"
+                      f"         Tez karne ke liye: ollama pull qwen3:4b   aur settings.py mein BRAIN_MODEL = \"qwen3:4b\"")
+            else:
+                print("[Mikasa] AI model ready" + (" (100% GPU)." if self.gpu_share else "."))
             return True
         except Exception as exc:
             print(f"[Mikasa] AI model abhi load nahi hua ({type(exc).__name__}). Ollama chalu hai?")
             return False
+
+    def _gpu_share(self) -> Optional[float]:
+        """Ollama /api/ps: model ka kitna hissa GPU (VRAM) mein hai (0-1)."""
+        try:
+            r = httpx.get(f"{self.base}/api/ps", timeout=5)
+            for m in r.json().get("models", []):
+                if m.get("name", "").startswith((settings.BRAIN_MODEL or "").split(":")[0]):
+                    size, vram = m.get("size") or 0, m.get("size_vram") or 0
+                    return vram / size if size else None
+        except Exception:
+            return None
+        return None
 
     def route(self, heard: str) -> Optional[dict]:
         messages = [{"role": "system", "content": self._system()}]
@@ -147,7 +165,7 @@ class Router:
             messages.append({"role": "assistant", "content": a})
         messages.append({"role": "user", "content": heard})
         try:
-            data = self._post(self._payload(messages, True, 260), timeout=60)
+            data = self._post(self._payload(messages, True, 200), timeout=60)
         except Exception as exc:
             print(f"[Mikasa] Router error: {exc}")
             return None

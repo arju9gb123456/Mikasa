@@ -24,7 +24,7 @@ SAMPLE_RATE = 16000
 BLOCK_SECONDS = 0.03
 MIN_SPEECH_RMS = 350       # isse dheemi awaaz ko speech nahi maanega
 NOISE_MULTIPLIER = 2.8     # background noise se kitna zyada loud ho to speech maane
-END_SILENCE_SECONDS = 0.9  # itni der chup = baat khatam
+END_SILENCE_SECONDS = 0.7  # itni der chup = baat khatam (kam = jaldi jawab)
 MIN_UTTERANCE_SECONDS = 0.35
 MAX_UTTERANCE_SECONDS = 15
 MIC_DEVICE = None          # None = default mic. Specific mic ke liye uska number/naam do
@@ -34,7 +34,7 @@ MIC_DEVICE = None          # None = default mic. Specific mic ke liye uska numbe
 STT_MODEL = "auto"         # auto / small / medium / large-v3-turbo / large-v3
 STT_LANGUAGE = "hi"        # "hi" Hinglish ke liye best. "en" sirf English ke liye
 STT_DEVICE = "auto"        # auto / cpu / cuda
-STT_BEAM_SIZE = 5
+STT_BEAM_SIZE = 3          # 1 = sabse tez, 5 = sabse accurate
 # Whisper ko pehle se batao kaise words aate hain -> English app names sahi likhega
 STT_PROMPT = (
     "Mikasa, VS Code open करो. Chrome open करो. Gmail खोलो. WhatsApp पे Rahul को message भेजो. "

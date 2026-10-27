@@ -16,7 +16,7 @@ import re
 
 from mikasa import settings
 
-_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
 
 def _clean_for_speech(text: str) -> str:
@@ -39,7 +39,7 @@ def _play_mp3(mp3: bytes) -> None:
     sd.wait()
 
 
-def edge_mp3(text: str, voice: str, rate: str, pitch: str = "+0Hz") -> bytes:
+def _edge_fetch(text: str, voice: str, rate: str, pitch: str) -> bytes:
     import edge_tts
 
     async def fetch() -> bytes:
@@ -50,11 +50,37 @@ def edge_mp3(text: str, voice: str, rate: str, pitch: str = "+0Hz") -> bytes:
                 buf.extend(chunk["data"])
         return bytes(buf)
 
-    # alag thread mein, taaki browser automation (Playwright) ke event loop se na takraye
-    mp3 = _POOL.submit(lambda: asyncio.run(fetch())).result(timeout=30)
+    mp3 = asyncio.run(fetch())
     if not mp3:
         raise RuntimeError("empty audio")
     return mp3
+
+
+def edge_mp3(text: str, voice: str, rate: str, pitch: str = "+0Hz") -> bytes:
+    # alag thread mein, taaki browser automation (Playwright) ke event loop se na takraye
+    return _POOL.submit(_edge_fetch, text, voice, rate, pitch).result(timeout=30)
+
+
+def split_sentences(text: str) -> list[str]:
+    """Jawab ko sentences mein todo, taaki pehla sentence turant bola ja sake."""
+    parts = [p.strip() for p in re.split(r"(?<=[.!?\u0964])\s+", text) if p.strip()]
+    out: list[str] = []
+    for p in parts:
+        if out and (len(out[-1]) < 25 or len(p) < 12):
+            out[-1] = f"{out[-1]} {p}"
+        else:
+            out.append(p)
+    return out or [text]
+
+
+def play_edge_pipelined(text: str, voice: str, rate: str, pitch: str) -> None:
+    """Sentence 1 bolte waqt sentence 2 download hota rahe -> jawab jaldi shuru."""
+    sentences = split_sentences(text)
+    futures = [_POOL.submit(_edge_fetch, sentences[0], voice, rate, pitch)]
+    for i in range(len(sentences)):
+        if i + 1 < len(sentences):
+            futures.append(_POOL.submit(_edge_fetch, sentences[i + 1], voice, rate, pitch))
+        _play_mp3(futures[i].result(timeout=30))
 
 
 def elevenlabs_mp3(text: str) -> bytes:
@@ -111,7 +137,7 @@ class Speaker:
         if self._engine in ("elevenlabs", "edge"):
             for voice in list(self._voices):
                 try:
-                    _play_mp3(edge_mp3(spoken, voice, settings.TTS_RATE, settings.TTS_PITCH))
+                    play_edge_pipelined(spoken, voice, settings.TTS_RATE, settings.TTS_PITCH)
                     return
                 except Exception as exc:
                     # voice hi galat ho (NoAudioReceived) to agli voice; internet na ho to seedha offline
