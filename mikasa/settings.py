@@ -64,6 +64,9 @@ ELEVENLABS_MODEL = "eleven_flash_v2_5"   # tez. Aur natural: "eleven_multilingua
 BRAIN_MODEL = "qwen3:8b"   # Ollama model ka naam (ollama list se dekho)
 OLLAMA_URL = "http://127.0.0.1:11434"
 OLLAMA_KEEP_ALIVE = "60m"  # model itni der GPU/RAM mein garam rahe -> jawab tez
+# GPU mein bada model poora na aaye to inme se jo installed ho uspe khud shift (tez jawab)
+AUTO_SMALLER_MODEL = True
+SMALLER_MODELS = ["qwen3:4b", "qwen3:1.7b"]
 SMART_ROUTER = True        # galat suna ho to bhi AI se matlab samajh ke command chalao
 BRAIN_AGENT = "orchestrator"
 BRAIN_TOOLS = ["web_search", "calculator", "think", "get_weather"]

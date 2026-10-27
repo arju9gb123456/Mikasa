@@ -108,7 +108,7 @@ class Coder:
             prompt = PROMPT.format(task=task)
             if "qwen3" in (settings.BRAIN_MODEL or "").lower():
                 prompt += " /no_think"
-            answer = j.ask(prompt, agent="simple")
+            answer = j.ask(prompt, agent="simple", model=settings.BRAIN_MODEL)
         except Exception as exc:
             print(f"[Mikasa] Code error: {exc}")
             return "Code likhte waqt error aaya. Ollama check karo."

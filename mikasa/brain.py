@@ -72,11 +72,11 @@ class Brain:
             return self.OFFLINE_MSG
         query = self._build_query(text)
         try:
-            raw = j.ask(query, agent=settings.BRAIN_AGENT, tools=settings.BRAIN_TOOLS)
+            raw = j.ask(query, agent=settings.BRAIN_AGENT, tools=settings.BRAIN_TOOLS, model=settings.BRAIN_MODEL)
         except Exception as exc:
             print(f"[Mikasa] Agent error ({exc}), simple mode try kar rahi hoon.")
             try:
-                raw = j.ask(query, agent="simple")
+                raw = j.ask(query, agent="simple", model=settings.BRAIN_MODEL)
             except Exception as exc2:
                 print(f"[Mikasa] Brain error: {exc2}")
                 if "engine" in str(exc2).lower() or "ollama" in str(exc2).lower():

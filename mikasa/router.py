@@ -136,15 +136,42 @@ class Router:
         try:
             self._post(self._payload([{"role": "user", "content": "hi"}], False, 1), timeout=120)
             self.gpu_share = self._gpu_share()
+            if self.gpu_share is not None and self.gpu_share < 0.9 and settings.AUTO_SMALLER_MODEL:
+                self._try_smaller_model()
             if self.gpu_share is not None and self.gpu_share < 0.95:
-                print(f"[Mikasa] Dhyan do: AI model ka sirf {self.gpu_share:.0%} GPU pe hai, baaki CPU pe -> jawab SLOW honge.\n"
-                      f"         Tez karne ke liye: ollama pull qwen3:4b   aur settings.py mein BRAIN_MODEL = \"qwen3:4b\"")
+                print(f"[Mikasa] Dhyan do: AI model ({settings.BRAIN_MODEL}) ka sirf {self.gpu_share:.0%} GPU pe hai -> jawab SLOW honge.\n"
+                      "         Tez karne ke liye PowerShell mein:  ollama pull qwen3:4b   (phir Mikasa restart, wo khud use karegi)")
             else:
-                print("[Mikasa] AI model ready" + (" (100% GPU)." if self.gpu_share else "."))
+                print(f"[Mikasa] AI model ready: {settings.BRAIN_MODEL}" + (" (100% GPU, tez)." if self.gpu_share else "."))
             return True
         except Exception as exc:
             print(f"[Mikasa] AI model abhi load nahi hua ({type(exc).__name__}). Ollama chalu hai?")
             return False
+
+    def _try_smaller_model(self) -> None:
+        """GPU mein jagah kam ho to installed chhote model pe khud shift ho jao (tez jawab)."""
+        try:
+            installed = [m.get("name", "") for m in httpx.get(f"{self.base}/api/tags", timeout=5).json().get("models", [])]
+        except Exception:
+            return
+        current = settings.BRAIN_MODEL
+        for cand in settings.SMALLER_MODELS:
+            if cand == current or cand not in installed:
+                continue
+            print(f"[Mikasa] {current} GPU mein poora nahi aa raha, tez jawab ke liye {cand} pe shift kar rahi hoon...")
+            try:
+                # bade model ko memory se hatao
+                httpx.post(f"{self.base}/api/generate", json={"model": current, "keep_alive": 0}, timeout=30)
+            except Exception:
+                pass
+            settings.BRAIN_MODEL = cand
+            try:
+                self._post(self._payload([{"role": "user", "content": "hi"}], False, 1), timeout=120)
+            except Exception:
+                settings.BRAIN_MODEL = current
+                continue
+            self.gpu_share = self._gpu_share()
+            return
 
     def _gpu_share(self) -> Optional[float]:
         """Ollama /api/ps: model ka kitna hissa GPU (VRAM) mein hai (0-1)."""
