@@ -105,7 +105,10 @@ class Coder:
         if j is None:
             return "AI connect nahi hai, isliye code nahi likh paayi. Ollama chalu karo."
         try:
-            answer = j.ask(PROMPT.format(task=task), agent="simple")
+            prompt = PROMPT.format(task=task)
+            if "qwen3" in (settings.BRAIN_MODEL or "").lower():
+                prompt += " /no_think"
+            answer = j.ask(prompt, agent="simple")
         except Exception as exc:
             print(f"[Mikasa] Code error: {exc}")
             return "Code likhte waqt error aaya. Ollama check karo."

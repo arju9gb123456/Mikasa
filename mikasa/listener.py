@@ -139,7 +139,9 @@ class Transcriber:
             # Windows pe GPU libraries (cublas/cudnn) aksar missing hoti hain aur error
             # pehli transcription pe aata hai. Abhi test karo, fail ho to CPU.
             try:
-                self._run(np.zeros(16000, dtype=np.float32))
+                segs, _ = self._model.transcribe(np.zeros(16000, dtype=np.float32), language="hi",
+                                                 vad_filter=False, beam_size=1)
+                list(segs)
             except Exception as exc:
                 self._to_cpu(exc)
 

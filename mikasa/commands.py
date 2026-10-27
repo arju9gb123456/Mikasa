@@ -82,18 +82,31 @@ _WAKE = _n(settings.WAKE_WORDS)
 
 
 def detect_wake(text: str) -> tuple[bool, str]:
-    """Pehle 4 words mein "Mikasa" dhoondo. (mila?, baaki command) return karo."""
+    """Pehle 4 words mein "Mikasa" dhoondo. (mila?, baaki command) return karo.
+
+    "मिका साब" jaise toote hue naam ke liye 1 aur 2 word dono try karte hain
+    aur jo zyada milta-julta ho wahi lete hain.
+    """
     tokens = normalize(text).split()
+    best = (0.0, -1, 0)  # (score, start, span)
     for i in range(min(4, len(tokens))):
-        for span in (1, 2):  # pehle single word, phir "mi kasa" jaise toote hue
+        for span in (1, 2):
             if i + span > len(tokens):
                 continue
             chunk = tokens[i:i + span]
-            candidates = {"".join(chunk), " ".join(chunk)}
-            for cand in candidates:
+            for cand in {"".join(chunk), " ".join(chunk)}:
                 for w in _WAKE:
-                    if cand == w or difflib.SequenceMatcher(None, cand, w).ratio() >= settings.WAKE_FUZZY:
-                        return True, " ".join(tokens[i + span:])
+                    score = 1.0 if cand == w else difflib.SequenceMatcher(None, cand, w).ratio()
+                    # 2-word match tabhi jab wo 1-word se saaf behtar ho
+                    if span == 2:
+                        score -= 0.02
+                    if score > best[0]:
+                        best = (score, i, span)
+        if best[0] >= 0.98:
+            break
+    score, i, span = best
+    if score >= settings.WAKE_FUZZY:
+        return True, " ".join(tokens[i + span:])
     return False, normalize(text)
 
 

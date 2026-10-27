@@ -19,6 +19,10 @@ os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
 os.environ.setdefault("HF_HUB_VERBOSITY", "error")
 warnings.filterwarnings("ignore", module="huggingface_hub")
+import logging  # noqa: E402
+
+for _name in ("openjarvis", "huggingface_hub", "faster_whisper"):
+    logging.getLogger(_name).setLevel(logging.ERROR)
 
 from mikasa import settings  # noqa: E402
 from mikasa.commands import Commands, Reply, detect_wake, normalize  # noqa: E402

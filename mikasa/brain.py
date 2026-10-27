@@ -49,7 +49,10 @@ class Brain:
             for user, bot in self._history:
                 lines.append(f"{settings.USER_NAME}: {user}\nMikasa: {bot}")
         lines.append(f"\n{settings.USER_NAME}: {text}\nMikasa:")
-        return "\n".join(lines)
+        query = "\n".join(lines)
+        if "qwen3" in (settings.BRAIN_MODEL or "").lower():
+            query += " /no_think"  # Qwen3: lamba sochna band, jawab jaldi
+        return query
 
     @staticmethod
     def _clean(answer: str) -> str:
